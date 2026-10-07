@@ -490,21 +490,21 @@ function PublicForm({
   const percentage = Math.round(((step + 1) / sections.length) * 100);
 
   return (
-    <main className="registration-layout">
-      <Progress steps={sections} current={step} onSelect={setStep} />
-      <section className="form-card">
-        <div className="form-card-header">
-          <div>
-            <div className="page-kicker">
-              PASO {step + 1} DE {sections.length}
-            </div>
-            <h1>{current.nombre}</h1>
+    <div className="form-shell">
+      <header className="form-header">
+        <div className="form-header-info">
+          <div className="page-kicker">
+            PASO {step + 1} DE {sections.length}
           </div>
-          <span className="percent">{percentage}%</span>
-          <div className="progress-track">
-            <span style={{ width: `${percentage}%` }} />
-          </div>
+          <h1>{current.nombre}</h1>
         </div>
+        <span className="percent">{percentage}%</span>
+        <div className="progress-track">
+          <span style={{ width: `${percentage}%` }} />
+        </div>
+      </header>
+
+      <main className="form-scroll">
         <div className="form-content">
           <QuestionSection
             section={current}
@@ -514,80 +514,34 @@ function PublicForm({
           />
           {notice && <div className="success-box">{notice}</div>}
         </div>
-        <div className="form-actions">
-          <button
-            className="secondary-button"
-            disabled={step === 0}
-            onClick={() => setStep(step - 1)}
-          >
-            <ArrowLeft /> Atrás
+      </main>
+
+      <footer className="form-footer">
+        <button
+          className="secondary-button"
+          disabled={step === 0}
+          onClick={() => setStep(step - 1)}
+        >
+          <ArrowLeft /> Atrás
+        </button>
+        {step < sections.length - 1 ? (
+          <button className="primary-button" onClick={validateAndContinue}>
+            Continuar <ArrowRight />
           </button>
-          {step < sections.length - 1 ? (
-            <button className="primary-button" onClick={validateAndContinue}>
-              Continuar <ArrowRight />
-            </button>
-          ) : (
-            <button
-              className="primary-button"
-              disabled={saving}
-              onClick={finish}
-            >
-              {saving ? <Loader2 className="spin" /> : "Guardar registro"}
-              {!saving && <Check />}
-            </button>
-          )}
-        </div>
-      </section>
-    </main>
+        ) : (
+          <button className="primary-button" disabled={saving} onClick={finish}>
+            {saving ? <Loader2 className="spin" /> : "Guardar registro"}
+            {!saving && <Check />}
+          </button>
+        )}
+      </footer>
+    </div>
   );
 }
 
 /* --------------------------- Subcomponentes --------------------------- */
 
-function Progress({
-  steps,
-  current,
-  onSelect,
-}: {
-  steps: Section[];
-  current: number;
-  onSelect: (step: number) => void;
-}) {
-  return (
-    <aside className="progress-card">
-      <span className="progress-title">PROGRESO</span>
-      <div className="progress-steps">
-        {steps.map((section, index) => (
-          <button
-            key={`${section.nombre}-${index}`}
-            className={
-              index === current ? "current" : index < current ? "done" : ""
-            }
-            onClick={() => index <= current && onSelect(index)}
-          >
-            <span className="step-icon">
-              <span className="step-number">{index + 1}</span>
-              <span className="step-symbol">
-                {index < current ? (
-                  <Check />
-                ) : index === 0 ? (
-                  <MapPin />
-                ) : (
-                  <FileText />
-                )}
-              </span>
-            </span>
-            <span>{section.nombre}</span>
-          </button>
-        ))}
-      </div>
-      <div className="protected">
-        <LockKeyhole /> La información se utilizará únicamente para este
-        registro.
-      </div>
-    </aside>
-  );
-}
+
 
 function QuestionSection({
   section,
