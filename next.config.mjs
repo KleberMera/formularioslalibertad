@@ -6,8 +6,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // basePath: "/formularios",
-  // assetPrefix: "/formularios",
+  basePath: "/formularios",
+  assetPrefix: "/formularios",
   output: "export",
 }
 
