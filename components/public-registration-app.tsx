@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
+import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Check,
   ClipboardList,
-  FileText,
   List,
   Loader2,
-  LockKeyhole,
-  MapPin,
   MessageCircle,
   PartyPopper,
   Tag,
@@ -379,12 +384,18 @@ function PublicForm({
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const scrollRef = useRef<HTMLElement>(null);
 
   const sections = useMemo(() => {
     return [...schema.secciones].sort((a, b) => a.orden - b.orden);
   }, [schema]);
 
   const current = sections[step];
+
+  // Al cambiar de paso, volvemos al inicio del contenido
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   const visible = (question: Question) =>
     !question.dependeDePreguntaId ||
@@ -490,78 +501,131 @@ function PublicForm({
   const percentage = Math.round(((step + 1) / sections.length) * 100);
 
   return (
-    <div className="form-shell">
-      <header className="form-header">
-        <div className="form-header-info">
-          <div className="page-kicker">
-            PASO {step + 1} DE {sections.length}
+    <div className="flex h-dvh min-h-0 justify-center overflow-hidden bg-slate-100 sm:items-center sm:p-6">
+      <div className="relative h-dvh min-h-0 w-full max-w-lg overflow-hidden bg-white sm:h-[min(52rem,calc(100dvh-3rem))] sm:rounded-3xl sm:border sm:border-slate-200/80 sm:shadow-xl sm:shadow-slate-900/10">
+        {/* Header */}
+        <header className="absolute inset-x-0 top-0 z-10 border-b border-brand-200/60 bg-gradient-to-b from-brand-50 via-white to-white px-6 pb-4 pt-6">
+          <div className="mb-3 flex flex-col items-center text-center">
+            <div className="mb-1.5 flex max-w-full items-center gap-2">
+              <span className="shrink-0 rounded-full bg-brand-500 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-white">
+                Formulario
+              </span>
+              <span className="truncate rounded-full bg-brand-100/80 px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wide text-brand-600">
+                {schema.nombre}
+              </span>
+            </div>
+            <h1 className="mt-1 text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+              {current.nombre}
+            </h1>
           </div>
-          <h1>{current.nombre}</h1>
-        </div>
-        <span className="percent">{percentage}%</span>
-        <div className="progress-track">
-          <span style={{ width: `${percentage}%` }} />
-        </div>
-      </header>
 
-      <main className="form-scroll">
-        <div className="form-content">
+          <div className="mb-2 flex items-center justify-between px-0.5">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+              Paso {step + 1} de {sections.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-slate-400">
+                Campos obligatorios (*)
+              </span>
+              <span className="rounded-md border border-brand-200/60 bg-brand-50 px-2 py-0.5 text-xs font-extrabold text-brand-600">
+                {percentage}%
+              </span>
+            </div>
+          </div>
+
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-500 transition-all duration-500 ease-out"
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+        </header>
+
+        {/* Contenido */}
+        <main
+          ref={scrollRef}
+          className="absolute inset-0 overflow-y-auto overscroll-contain px-6 pb-28 pt-44"
+        >
           <QuestionSection
             section={current}
             answers={answers}
             errors={errors}
             update={updateAnswer}
+            visible={visible}
           />
-          {notice && <div className="success-box">{notice}</div>}
-        </div>
-      </main>
+          {notice && (
+            <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {notice}
+            </div>
+          )}
+        </main>
 
-      <footer className="form-footer">
-        <button
-          className="secondary-button"
-          disabled={step === 0}
-          onClick={() => setStep(step - 1)}
-        >
-          <ArrowLeft /> Atrás
-        </button>
-        {step < sections.length - 1 ? (
-          <button className="primary-button" onClick={validateAndContinue}>
-            Continuar <ArrowRight />
+        {/* Footer */}
+        <footer className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-slate-100 bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] backdrop-blur-md sm:px-6">
+          <button
+            type="button"
+            disabled={step === 0}
+            onClick={() => setStep(step - 1)}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowLeft className="h-4 w-4" /> Atrás
           </button>
-        ) : (
-          <button className="primary-button" disabled={saving} onClick={finish}>
-            {saving ? <Loader2 className="spin" /> : "Guardar registro"}
-            {!saving && <Check />}
-          </button>
-        )}
-      </footer>
+
+          {step < sections.length - 1 ? (
+            <button
+              type="button"
+              onClick={validateAndContinue}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-500 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/25 active:scale-[0.99]"
+            >
+              Continuar <ArrowRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={finish}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-500 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Guardar registro <Check className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          )}
+        </footer>
+      </div>
     </div>
   );
 }
 
 /* --------------------------- Subcomponentes --------------------------- */
 
-
-
 function QuestionSection({
   section,
   answers,
   errors,
   update,
+  visible,
 }: {
   section: Section;
   answers: Record<number, Answer>;
   errors: Record<number, string>;
   update: (id: number, answer: Answer) => void;
+  visible: (question: Question) => boolean;
 }) {
+  const preguntas = section.preguntas.filter(visible);
+
   return (
-    <div className="question-list">
-      {section.preguntas.length === 0 ? (
-        <div className="empty-questions">
+    <div className="space-y-6">
+      {preguntas.length === 0 ? (
+        <div className="rounded-2xl bg-brand-50 p-5 text-sm text-slate-500">
           Esta sección no tiene preguntas visibles.
         </div>
       ) : (
-        section.preguntas.map((question) => (
+        preguntas.map((question) => (
           <QuestionField
             key={question.id}
             question={question}
@@ -574,6 +638,18 @@ function QuestionSection({
     </div>
   );
 }
+
+const inputBase =
+  "block w-full rounded-2xl border bg-white px-4 py-3.5 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition focus:ring-4";
+const inputOk =
+  "border-slate-200 focus:border-brand-500 focus:ring-brand-500/10";
+const inputErr =
+  "border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-rose-500/10";
+
+const optionCard =
+  "group flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 transition hover:border-slate-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-brand-500/15 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:disabled]:hover:border-slate-200";
+const optionText =
+  "text-sm font-medium text-slate-700 group-has-[:checked]:font-semibold group-has-[:checked]:text-slate-900";
 
 function QuestionField({
   question,
@@ -590,38 +666,73 @@ function QuestionField({
   const reglas = question.reglas ?? {};
   const options = question.opciones || [];
   const inputId = `q-${question.id}`;
+  const isGroup =
+    (kind === "unica" || kind === "multiple") && options.length > 0;
+  const inputClass = `${inputBase} ${error ? inputErr : inputOk}`;
+
+  const textHandlers = {
+    onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      update({ valorTexto: filtrarTexto(event.target.value, reglas) }),
+    onKeyDown: (event: KeyboardEvent) => {
+      if (reglas.permitirEspacios === false && event.key === " ") {
+        event.preventDefault();
+      }
+    },
+  };
 
   return (
-    <div className={`question ${error ? "has-error" : ""}`}>
-      <label className="question-label" htmlFor={inputId}>
-        <span>{question.enunciado}</span>
-        {question.obligatoria && <i aria-label="obligatorio"> *</i>}
+    <div className="space-y-2.5">
+      <label
+        htmlFor={isGroup ? undefined : inputId}
+        className="block text-xs font-extrabold uppercase leading-snug tracking-wider text-slate-800"
+      >
+        {question.enunciado}
+        {question.obligatoria && (
+          <span className="ml-0.5 text-brand-500" aria-label="obligatorio">
+            {" "}
+            *
+          </span>
+        )}
       </label>
 
+      {kind === "multiple" && isGroup && (
+        <p className="text-[11px] font-medium text-slate-500">
+          {reglas.maxSeleccion
+            ? `Selecciona hasta ${reglas.maxSeleccion} opciones`
+            : "Puedes seleccionar más de una opción"}
+        </p>
+      )}
+
       {kind === "textarea" ? (
-        <textarea
-          id={inputId}
-          value={answer.valorTexto || ""}
-          onChange={(event) =>
-            update({ valorTexto: filtrarTexto(event.target.value, reglas) })
-          }
-          onKeyDown={(event) => {
-            if (reglas.permitirEspacios === false && event.key === " ") {
-              event.preventDefault();
-            }
-          }}
-          rows={4}
-          maxLength={reglas.maxLength}
-          placeholder="Escribe tu respuesta..."
-        />
+        <>
+          <textarea
+            id={inputId}
+            value={answer.valorTexto || ""}
+            rows={4}
+            maxLength={reglas.maxLength}
+            placeholder="Escribe tu respuesta..."
+            aria-invalid={!!error}
+            className={`${inputClass} resize-y`}
+            {...textHandlers}
+          />
+          {reglas.maxLength !== undefined && (
+            <p className="text-right text-[11px] text-slate-400">
+              {(answer.valorTexto || "").length}/{reglas.maxLength}
+            </p>
+          )}
+        </>
       ) : kind === "numero" ? (
         <input
           id={inputId}
           type="number"
+          inputMode={reglas.esEntero ? "numeric" : "decimal"}
           value={answer.valorNumero ?? ""}
           min={reglas.min}
           max={reglas.max}
           step={reglas.esEntero ? 1 : "any"}
+          placeholder="Ingresa un número"
+          aria-invalid={!!error}
+          className={inputClass}
           onChange={(event) => {
             const raw = event.target.value;
             if (raw === "") {
@@ -632,13 +743,9 @@ function QuestionField({
             if (Number.isNaN(num)) return;
 
             // Si excede el máximo, lo recortamos al máximo
-            if (reglas.max !== undefined && num > reglas.max) {
-              num = reglas.max;
-            }
+            if (reglas.max !== undefined && num > reglas.max) num = reglas.max;
             // Forzar entero si aplica
-            if (reglas.esEntero) {
-              num = Math.trunc(num);
-            }
+            if (reglas.esEntero) num = Math.trunc(num);
             update({ valorNumero: num });
           }}
           onKeyDown={(event) => {
@@ -646,24 +753,25 @@ function QuestionField({
               event.preventDefault();
             }
           }}
-          placeholder="Ingresa un número"
         />
       ) : kind === "unica" && options.length > 0 ? (
-        <div className="options">
+        <div className="space-y-2.5">
           {options.map((option) => (
-            <label className="option" key={option.id}>
+            <label className={optionCard} key={option.id}>
+              <span className={optionText}>{option.texto}</span>
               <input
                 type="radio"
                 name={inputId}
+                className="peer sr-only"
                 checked={answer.opcionId === option.id}
                 onChange={() => update({ opcionId: option.id })}
               />
-              <span>{option.texto}</span>
+              <span className="h-4 w-4 shrink-0 rounded-full border border-slate-300 bg-white transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:ring-4 peer-checked:ring-brand-100" />
             </label>
           ))}
         </div>
       ) : kind === "multiple" && options.length > 0 ? (
-        <div className="options">
+        <div className="space-y-2.5">
           {options.map((option) => {
             const seleccionadas = answer.opciones || [];
             const yaSeleccionada = seleccionadas.includes(option.id);
@@ -673,28 +781,28 @@ function QuestionField({
               !yaSeleccionada;
 
             return (
-              <label
-                className={`option ${alcanzoMax ? "disabled" : ""}`}
-                key={option.id}
-              >
+              <label className={optionCard} key={option.id}>
+                <span className={optionText}>{option.texto}</span>
                 <input
                   type="checkbox"
                   name={inputId}
+                  className="peer sr-only"
                   checked={yaSeleccionada}
                   disabled={alcanzoMax}
-                  onChange={(event) => {
-                    if (event.target.checked) {
-                      update({ opciones: [...seleccionadas, option.id] });
-                    } else {
-                      update({
-                        opciones: seleccionadas.filter(
-                          (id) => id !== option.id,
-                        ),
-                      });
-                    }
-                  }}
+                  onChange={(event) =>
+                    update({
+                      opciones: event.target.checked
+                        ? [...seleccionadas, option.id]
+                        : seleccionadas.filter((id) => id !== option.id),
+                    })
+                  }
                 />
-                <span>{option.texto}</span>
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-white transition peer-checked:border-brand-500 peer-checked:bg-brand-500">
+                  <Check
+                    className="h-3.5 w-3.5 opacity-0 transition group-has-[:checked]:opacity-100"
+                    strokeWidth={3}
+                  />
+                </span>
               </label>
             );
           })}
@@ -705,19 +813,19 @@ function QuestionField({
           type="text"
           value={answer.valorTexto || ""}
           maxLength={reglas.maxLength}
-          onChange={(event) =>
-            update({ valorTexto: filtrarTexto(event.target.value, reglas) })
-          }
-          onKeyDown={(event) => {
-            if (reglas.permitirEspacios === false && event.key === " ") {
-              event.preventDefault();
-            }
-          }}
           placeholder="Escribe tu respuesta..."
+          aria-invalid={!!error}
+          className={inputClass}
+          {...textHandlers}
         />
       )}
 
-      {error && <span className="field-error">{error}</span>}
+      {error && (
+        <p className="flex items-center gap-1.5 text-xs font-medium text-rose-600">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {error}
+        </p>
+      )}
     </div>
   );
 }
