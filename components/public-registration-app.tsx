@@ -11,6 +11,7 @@ import {
   Loader2,
   LockKeyhole,
   MapPin,
+  MessageCircle,
   PartyPopper,
   Tag,
 } from "lucide-react";
@@ -93,26 +94,62 @@ export function PublicRegistrationApp() {
 
   if (done) {
     return (
-      <main className="empty-state">
-        <div className="empty-icon">
-          <PartyPopper />
+      <div className="welcome-page">
+        <div className="welcome-bg" aria-hidden="true">
+          <span className="blob blob-orange" />
+          <span className="blob blob-teal" />
+          <span className="blob blob-yellow" />
+          <span className="blob blob-blue" />
         </div>
-        <div className="page-kicker">GRACIAS</div>
-        <h1>¡Registro completado!</h1>
-        <p>
-          Tu información fue enviada correctamente. ¡Nos vemos en la pista! 💃🕺
-        </p>
-        <button
-          className="primary-button"
-          onClick={() => {
-            setDone(false);
-            setStarted(false);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          Registrar otra persona
-        </button>
-      </main>
+
+        <header className="welcome-header">
+          <span className="welcome-chip">
+            <span className="welcome-dot" />
+            Registro enviado
+          </span>
+        </header>
+
+        <main className="welcome-card thanks-card">
+          <div className="welcome-icon thanks-icon">
+            <PartyPopper />
+          </div>
+          <div className="welcome-kicker">GRACIAS</div>
+
+          <h1>¡Registro completado!</h1>
+
+          <p className="thanks-lead">
+            ¡Gracias por registrarte en <strong>La Libertad Baila</strong>! 💃🕺
+          </p>
+          <p>
+            Tu información nos ayudará a conocer y conectar a los bailarines de
+            nuestra provincia y a construir nuevas oportunidades de formación,
+            integración y crecimiento artístico.
+          </p>
+
+          <div className="thanks-note">
+            <MessageCircle />
+            <span>
+              Si seleccionaste que deseas formar parte de la comunidad oficial
+              de WhatsApp, recibirás la información correspondiente para unirte.
+            </span>
+          </div>
+
+          <p className="thanks-closing">
+            ¡La danza de Santa Elena crece cuando bailamos juntos! 🔥
+          </p>
+
+          <button
+            className="welcome-cta"
+            onClick={() => {
+              setDone(false);
+              setStarted(false);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            Registrar otra persona
+          </button>
+        </main>
+      </div>
     );
   }
 
