@@ -251,13 +251,6 @@ export function PublicRegistrationApp() {
           <span className="blob blob-blue" />
         </div>
 
-        <header className="welcome-header">
-          <span className="welcome-chip">
-            <span className="welcome-dot" />
-            Registro enviado
-          </span>
-        </header>
-
         <main className="welcome-card thanks-card">
           <div className="welcome-icon thanks-icon">
             <PartyPopper />
@@ -335,13 +328,6 @@ function WelcomeScreen({
         <span className="blob blob-blue" />
       </div>
 
-      <header className="welcome-header">
-        <span className="welcome-chip">
-          <span className="welcome-dot" />
-          Portal de Registro Oficial
-        </span>
-      </header>
-
       <main className="welcome-card">
         <div className="welcome-icon">
           <ClipboardList />
@@ -349,7 +335,7 @@ function WelcomeScreen({
         <div className="welcome-kicker">BIENVENIDO/A</div>
 
         <h1>{schema.nombre}</h1>
-        <p>{schema.descripcion}</p>
+        <p className="whitespace-pre-line text-left">{schema.descripcion}</p>
 
         <div className="welcome-meta">
           <span className="welcome-badge">
