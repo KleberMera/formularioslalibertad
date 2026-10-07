@@ -22,6 +22,21 @@ const EVENTO_ID = Number(process.env.NEXT_PUBLIC_FIRMES_EVENTO_ID);
 const FORMULARIO_ID = Number(process.env.NEXT_PUBLIC_FIRMES_FORMULARIO_ID);
 
 type Option = { id: number; orden: number; texto: string; valor: string };
+
+type QuestionRules = {
+  minLength?: number;
+  maxLength?: number;
+  permitirEspacios?: boolean;
+  soloAlfanumerico?: boolean;
+  regex?: string;
+  min?: number;
+  max?: number;
+  esEntero?: boolean;
+  decimales?: number;
+  minSeleccion?: number;
+  maxSeleccion?: number;
+};
+
 type Question = {
   id: number;
   orden: number;
@@ -29,10 +44,12 @@ type Question = {
   enunciado: string;
   tipo: string;
   obligatoria: boolean;
+  reglas?: QuestionRules;
   dependeDePreguntaId: number | null;
   dependeDeOpcionId: number | null;
   opciones?: Option[];
 };
+
 type Section = { nombre: string; orden: number; preguntas: Question[] };
 type FormSchema = {
   id: number;
@@ -58,6 +75,133 @@ async function request(path: string, options: RequestInit = {}) {
     throw new Error(body.message || "No se pudo completar la solicitud");
   return body.data;
 }
+
+/* ----------------------------- Helpers ----------------------------- */
+
+function getKind(
+  tipo: string,
+): "texto" | "textarea" | "numero" | "unica" | "multiple" {
+  const t = String(tipo || "TEXTO")
+    .toUpperCase()
+    .replace(/[-_ ]/g, "");
+  if (t === "TEXTAREA" || t === "TEXTOLARGO") return "textarea";
+  if (t === "NUMERO" || t === "NUMBER" || t === "INTEGER" || t === "DECIMAL")
+    return "numero";
+  if (t === "UNICA" || t === "UNIQUE" || t === "RADIO" || t === "SELECT")
+    return "unica";
+  if (t === "MULTIPLE" || t === "MULTI" || t === "CHECKBOX") return "multiple";
+  return "texto";
+}
+
+/**
+ * Limpia el texto a medida que el usuario escribe,
+ * según las reglas configuradas en la pregunta.
+ */
+function filtrarTexto(valor: string, reglas?: QuestionRules): string {
+  if (!reglas) return valor;
+  let resultado = valor;
+
+  if (reglas.permitirEspacios === false) {
+    resultado = resultado.replace(/\s/g, "");
+  }
+  if (reglas.soloAlfanumerico === true) {
+    resultado = resultado.replace(/[^A-Za-z0-9]/g, "");
+  }
+  if (reglas.regex) {
+    try {
+      const re = new RegExp(reglas.regex);
+      // Se van quitando caracteres del final hasta que cumpla el patrón
+      while (resultado.length > 0 && !re.test(resultado)) {
+        resultado = resultado.slice(0, -1);
+      }
+    } catch {
+      /* regex inválida, se ignora */
+    }
+  }
+  if (reglas.maxLength !== undefined && resultado.length > reglas.maxLength) {
+    resultado = resultado.slice(0, reglas.maxLength);
+  }
+  return resultado;
+}
+
+/**
+ * Valida el valor de una pregunta según su tipo y reglas.
+ * Devuelve un mensaje de error o null si está OK.
+ */
+function validarPregunta(
+  question: Question,
+  answer: Answer | undefined,
+): string | null {
+  const reglas = question.reglas ?? {};
+  const kind = getKind(question.tipo);
+  const req = question.obligatoria;
+
+  if (kind === "texto" || kind === "textarea") {
+    const valor = answer?.valorTexto?.trim() ?? "";
+    if (!valor) return req ? "Este campo es obligatorio" : null;
+
+    if (reglas.minLength !== undefined && valor.length < reglas.minLength) {
+      return `Debe tener al menos ${reglas.minLength} caracteres`;
+    }
+    if (reglas.maxLength !== undefined && valor.length > reglas.maxLength) {
+      return `No debe superar los ${reglas.maxLength} caracteres`;
+    }
+    if (reglas.permitirEspacios === false && /\s/.test(valor)) {
+      return "No se permiten espacios";
+    }
+    if (reglas.soloAlfanumerico === true && !/^[A-Za-z0-9]+$/.test(valor)) {
+      return "Solo se permiten letras y números";
+    }
+    if (reglas.regex) {
+      try {
+        if (!new RegExp(reglas.regex).test(valor)) {
+          return "El formato no es válido";
+        }
+      } catch {
+        /* regex inválida, se ignora */
+      }
+    }
+    return null;
+  }
+
+  if (kind === "numero") {
+    const valor = answer?.valorNumero;
+    if (valor === undefined || valor === null || Number.isNaN(valor)) {
+      return req ? "Este campo es obligatorio" : null;
+    }
+    if (reglas.min !== undefined && valor < reglas.min) {
+      return `Debe ser mayor o igual a ${reglas.min}`;
+    }
+    if (reglas.max !== undefined && valor > reglas.max) {
+      return `Debe ser menor o igual a ${reglas.max}`;
+    }
+    if (reglas.esEntero === true && !Number.isInteger(valor)) {
+      return "Debe ser un número entero";
+    }
+    return null;
+  }
+
+  if (kind === "unica") {
+    if (!answer?.opcionId) return req ? "Selecciona una opción" : null;
+    return null;
+  }
+
+  if (kind === "multiple") {
+    const n = answer?.opciones?.length ?? 0;
+    if (n === 0) return req ? "Selecciona al menos una opción" : null;
+    if (reglas.minSeleccion !== undefined && n < reglas.minSeleccion) {
+      return `Selecciona al menos ${reglas.minSeleccion} opción(es)`;
+    }
+    if (reglas.maxSeleccion !== undefined && n > reglas.maxSeleccion) {
+      return `Máximo ${reglas.maxSeleccion} opción(es)`;
+    }
+    return null;
+  }
+
+  return null;
+}
+
+/* ------------------------- App principal ------------------------- */
 
 export function PublicRegistrationApp() {
   const [done, setDone] = useState(false);
@@ -166,6 +310,8 @@ export function PublicRegistrationApp() {
   );
 }
 
+/* --------------------------- Bienvenida --------------------------- */
+
 function WelcomeScreen({
   schema,
   onStart,
@@ -217,6 +363,8 @@ function WelcomeScreen({
   );
 }
 
+/* ----------------------------- Formulario ----------------------------- */
+
 function PublicForm({
   schema,
   eventoId,
@@ -227,6 +375,7 @@ function PublicForm({
   onDone: () => void;
 }) {
   const [answers, setAnswers] = useState<Record<number, Answer>>({});
+  const [errors, setErrors] = useState<Record<number, string>>({});
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -249,36 +398,32 @@ function PublicForm({
       ...previous,
       [id]: { ...previous[id], ...answer },
     }));
-  }
-
-  function missingFields() {
-    return questions.flatMap((question) => {
-      if (!question.obligatoria) return [];
-      const answer = answers[question.id];
-      const type = String(question.tipo || "TEXTO")
-        .toUpperCase()
-        .replace(/[-_ ]/g, "");
-      const empty =
-        !answer ||
-        (type === "MULTIPLE" || type === "MULTI" || type === "CHECKBOX"
-          ? !answer.opciones?.length
-          : type === "UNICA" ||
-              type === "UNIQUE" ||
-              type === "RADIO" ||
-              type === "SELECT"
-            ? !answer.opcionId
-            : !answer.valorTexto?.trim() && answer.valorNumero === undefined);
-      return empty ? [question.enunciado] : [];
+    // Limpiamos el error de esa pregunta al cambiar el valor
+    setErrors((prev) => {
+      if (!prev[id]) return prev;
+      const copia = { ...prev };
+      delete copia[id];
+      return copia;
     });
   }
 
+  /** Valida las preguntas visibles de la sección actual. */
+  function validateVisible(): boolean {
+    const nuevosErrores: Record<number, string> = {};
+    for (const q of questions) {
+      const err = validarPregunta(q, answers[q.id]);
+      if (err) nuevosErrores[q.id] = err;
+    }
+    setErrors(nuevosErrores);
+    return Object.keys(nuevosErrores).length === 0;
+  }
+
   async function validateAndContinue() {
-    const missing = missingFields();
-    if (missing.length) {
+    if (!validateVisible()) {
       await Swal.fire({
         icon: "warning",
-        title: "Campos obligatorios",
-        html: `Completa: <strong>${missing.join(", ")}</strong>`,
+        title: "Revisa los campos",
+        text: "Hay campos que necesitan tu atención.",
         confirmButtonColor: "#f45116",
       });
       return;
@@ -287,6 +432,16 @@ function PublicForm({
   }
 
   async function finish() {
+    if (!validateVisible()) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Revisa los campos",
+        text: "Hay campos que necesitan tu atención.",
+        confirmButtonColor: "#f45116",
+      });
+      return;
+    }
+
     setSaving(true);
     setNotice("");
     try {
@@ -308,6 +463,7 @@ function PublicForm({
         confirmButtonColor: "#f45116",
       });
       setAnswers({});
+      setErrors({});
       setStep(0);
       onDone();
     } catch (error) {
@@ -353,6 +509,7 @@ function PublicForm({
           <QuestionSection
             section={current}
             answers={answers}
+            errors={errors}
             update={updateAnswer}
           />
           {notice && <div className="success-box">{notice}</div>}
@@ -373,19 +530,7 @@ function PublicForm({
             <button
               className="primary-button"
               disabled={saving}
-              onClick={async () => {
-                const missing = missingFields();
-                if (missing.length) {
-                  await Swal.fire({
-                    icon: "warning",
-                    title: "Campos obligatorios",
-                    html: `Completa: <strong>${missing.join(", ")}</strong>`,
-                    confirmButtonColor: "#f45116",
-                  });
-                  return;
-                }
-                finish();
-              }}
+              onClick={finish}
             >
               {saving ? <Loader2 className="spin" /> : "Guardar registro"}
               {!saving && <Check />}
@@ -397,7 +542,7 @@ function PublicForm({
   );
 }
 
-// ---------------- Subcomponentes ----------------
+/* --------------------------- Subcomponentes --------------------------- */
 
 function Progress({
   steps,
@@ -447,10 +592,12 @@ function Progress({
 function QuestionSection({
   section,
   answers,
+  errors,
   update,
 }: {
   section: Section;
   answers: Record<number, Answer>;
+  errors: Record<number, string>;
   update: (id: number, answer: Answer) => void;
 }) {
   return (
@@ -465,6 +612,7 @@ function QuestionSection({
             key={question.id}
             question={question}
             answer={answers[question.id] || {}}
+            error={errors[question.id]}
             update={(answer) => update(question.id, answer)}
           />
         ))
@@ -476,93 +624,146 @@ function QuestionSection({
 function QuestionField({
   question,
   answer,
+  error,
   update,
 }: {
   question: Question;
   answer: Answer;
+  error?: string;
   update: (answer: Answer) => void;
 }) {
-  const type = String(question.tipo || "TEXTO")
-    .toUpperCase()
-    .replace(/[-_ ]/g, "");
+  const kind = getKind(question.tipo);
+  const reglas = question.reglas ?? {};
   const options = question.opciones || [];
-  const isLongText =
-    type === "TEXTAREA" || type === "TEXTO_LARGO" || type === "TEXTOLARGO";
-  const isNumber =
-    type === "NUMERO" ||
-    type === "NUMBER" ||
-    type === "INTEGER" ||
-    type === "DECIMAL";
-  const isSingle =
-    type === "UNICA" ||
-    type === "UNIQUE" ||
-    type === "RADIO" ||
-    type === "SELECT";
-  const isMultiple =
-    type === "MULTIPLE" || type === "MULTI" || type === "CHECKBOX";
+  const inputId = `q-${question.id}`;
 
   return (
-    <div className="question">
-      <label className="question-label">
+    <div className={`question ${error ? "has-error" : ""}`}>
+      <label className="question-label" htmlFor={inputId}>
         <span>{question.enunciado}</span>
         {question.obligatoria && <i aria-label="obligatorio"> *</i>}
       </label>
-      {isLongText ? (
+
+      {kind === "textarea" ? (
         <textarea
+          id={inputId}
           value={answer.valorTexto || ""}
-          onChange={(event) => update({ valorTexto: event.target.value })}
+          onChange={(event) =>
+            update({ valorTexto: filtrarTexto(event.target.value, reglas) })
+          }
+          onKeyDown={(event) => {
+            if (reglas.permitirEspacios === false && event.key === " ") {
+              event.preventDefault();
+            }
+          }}
           rows={4}
+          maxLength={reglas.maxLength}
           placeholder="Escribe tu respuesta..."
         />
-      ) : isNumber ? (
+      ) : kind === "numero" ? (
         <input
+          id={inputId}
           type="number"
           value={answer.valorNumero ?? ""}
-          onChange={(event) =>
-            update({
-              valorNumero: event.target.value
-                ? Number(event.target.value)
-                : undefined,
-            })
-          }
+          min={reglas.min}
+          max={reglas.max}
+          step={reglas.esEntero ? 1 : "any"}
+          onChange={(event) => {
+            const raw = event.target.value;
+            if (raw === "") {
+              update({ valorNumero: undefined });
+              return;
+            }
+            let num = Number(raw);
+            if (Number.isNaN(num)) return;
+
+            // Si excede el máximo, lo recortamos al máximo
+            if (reglas.max !== undefined && num > reglas.max) {
+              num = reglas.max;
+            }
+            // Forzar entero si aplica
+            if (reglas.esEntero) {
+              num = Math.trunc(num);
+            }
+            update({ valorNumero: num });
+          }}
+          onKeyDown={(event) => {
+            if (reglas.esEntero && (event.key === "." || event.key === ",")) {
+              event.preventDefault();
+            }
+          }}
           placeholder="Ingresa un número"
         />
-      ) : (isSingle || isMultiple) && options.length > 0 ? (
+      ) : kind === "unica" && options.length > 0 ? (
         <div className="options">
           {options.map((option) => (
             <label className="option" key={option.id}>
               <input
-                type={isSingle ? "radio" : "checkbox"}
-                name={`q-${question.id}`}
-                checked={
-                  isSingle
-                    ? answer.opcionId === option.id
-                    : answer.opciones?.includes(option.id) || false
-                }
-                onChange={(event) =>
-                  isSingle
-                    ? update({ opcionId: option.id })
-                    : update({
-                        opciones: event.target.checked
-                          ? [...(answer.opciones || []), option.id]
-                          : (answer.opciones || []).filter(
-                              (id) => id !== option.id,
-                            ),
-                      })
-                }
+                type="radio"
+                name={inputId}
+                checked={answer.opcionId === option.id}
+                onChange={() => update({ opcionId: option.id })}
               />
               <span>{option.texto}</span>
             </label>
           ))}
         </div>
+      ) : kind === "multiple" && options.length > 0 ? (
+        <div className="options">
+          {options.map((option) => {
+            const seleccionadas = answer.opciones || [];
+            const yaSeleccionada = seleccionadas.includes(option.id);
+            const alcanzoMax =
+              reglas.maxSeleccion !== undefined &&
+              seleccionadas.length >= reglas.maxSeleccion &&
+              !yaSeleccionada;
+
+            return (
+              <label
+                className={`option ${alcanzoMax ? "disabled" : ""}`}
+                key={option.id}
+              >
+                <input
+                  type="checkbox"
+                  name={inputId}
+                  checked={yaSeleccionada}
+                  disabled={alcanzoMax}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      update({ opciones: [...seleccionadas, option.id] });
+                    } else {
+                      update({
+                        opciones: seleccionadas.filter(
+                          (id) => id !== option.id,
+                        ),
+                      });
+                    }
+                  }}
+                />
+                <span>{option.texto}</span>
+              </label>
+            );
+          })}
+        </div>
       ) : (
         <input
+          id={inputId}
           type="text"
           value={answer.valorTexto || ""}
-          onChange={(event) => update({ valorTexto: event.target.value })}
+          maxLength={reglas.maxLength}
+          onChange={(event) =>
+            update({ valorTexto: filtrarTexto(event.target.value, reglas) })
+          }
+          onKeyDown={(event) => {
+            if (reglas.permitirEspacios === false && event.key === " ") {
+              event.preventDefault();
+            }
+          }}
           placeholder="Escribe tu respuesta..."
         />
       )}
+
+      {error && <span className="field-error">{error}</span>}
     </div>
   );
 }
