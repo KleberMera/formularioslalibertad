@@ -12,10 +12,14 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Calendar,
   Check,
   ClipboardList,
+  Clock,
+  Gift,
   List,
   Loader2,
+  MapPin,
   MessageCircle,
   PartyPopper,
   Tag,
@@ -56,13 +60,19 @@ type Question = {
 };
 
 type Section = { nombre: string; orden: number; preguntas: Question[] };
+
 type FormSchema = {
   id: number;
   nombre: string;
   descripcion: string;
   version: number;
+  lugar?: string | null;
+  fecha?: string | null;
+  hora?: string | null;
+  participacion?: string | null;
   secciones: Section[];
 };
+
 type Answer = {
   valorTexto?: string;
   valorNumero?: number;
@@ -98,10 +108,6 @@ function getKind(
   return "texto";
 }
 
-/**
- * Limpia el texto a medida que el usuario escribe,
- * según las reglas configuradas en la pregunta.
- */
 function filtrarTexto(valor: string, reglas?: QuestionRules): string {
   if (!reglas) return valor;
   let resultado = valor;
@@ -115,12 +121,11 @@ function filtrarTexto(valor: string, reglas?: QuestionRules): string {
   if (reglas.regex) {
     try {
       const re = new RegExp(reglas.regex);
-      // Se van quitando caracteres del final hasta que cumpla el patrón
       while (resultado.length > 0 && !re.test(resultado)) {
         resultado = resultado.slice(0, -1);
       }
     } catch {
-      /* regex inválida, se ignora */
+      /* regex inválida */
     }
   }
   if (reglas.maxLength !== undefined && resultado.length > reglas.maxLength) {
@@ -129,10 +134,6 @@ function filtrarTexto(valor: string, reglas?: QuestionRules): string {
   return resultado;
 }
 
-/**
- * Valida el valor de una pregunta según su tipo y reglas.
- * Devuelve un mensaje de error o null si está OK.
- */
 function validarPregunta(
   question: Question,
   answer: Answer | undefined,
@@ -163,7 +164,7 @@ function validarPregunta(
           return "El formato no es válido";
         }
       } catch {
-        /* regex inválida, se ignora */
+        /* ignorar */
       }
     }
     return null;
@@ -319,6 +320,9 @@ function WelcomeScreen({
 }) {
   const total = schema.secciones.length;
 
+  const hasEventInfo =
+    schema.lugar || schema.fecha || schema.hora || schema.participacion;
+
   return (
     <div className="welcome-page">
       <div className="welcome-bg" aria-hidden="true">
@@ -337,14 +341,64 @@ function WelcomeScreen({
         <h1>{schema.nombre}</h1>
         <p className="whitespace-pre-line text-left">{schema.descripcion}</p>
 
-        <div className="welcome-meta">
+        {/* 👇 Bloque de info del evento (solo si hay datos) */}
+        {hasEventInfo && (
+          <div className="welcome-info">
+            {schema.lugar && (
+              <div className="welcome-info-row">
+                <span className="welcome-info-icon">
+                  <MapPin className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong>Lugar:</strong> {schema.lugar}
+                </span>
+              </div>
+            )}
+            {schema.fecha && (
+              <div className="welcome-info-row">
+                <span className="welcome-info-icon">
+                  <Calendar className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong>Fecha:</strong>{" "}
+                  {new Date(schema.fecha + "T00:00:00").toLocaleDateString(
+                    "es-EC",
+                    { day: "numeric", month: "long", year: "numeric" },
+                  )}
+                </span>
+              </div>
+            )}
+            {schema.hora && (
+              <div className="welcome-info-row">
+                <span className="welcome-info-icon">
+                  <Clock className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong>Hora:</strong> {schema.hora}
+                </span>
+              </div>
+            )}
+            {schema.participacion && (
+              <div className="welcome-info-row">
+                <span className="welcome-info-icon">
+                  <Gift className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong>Participación:</strong> {schema.participacion}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* <div className="welcome-meta">
           <span className="welcome-badge">
             <Tag /> Versión {schema.version}
           </span>
           <span className="welcome-badge">
             <List /> {total} {total === 1 ? "sección" : "secciones"}
           </span>
-        </div>
+        </div> */}
 
         <button className="welcome-cta" onClick={onStart}>
           Registrarse <ArrowRight />
@@ -378,7 +432,6 @@ function PublicForm({
 
   const current = sections[step];
 
-  // Al cambiar de paso, volvemos al inicio del contenido
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
@@ -395,7 +448,6 @@ function PublicForm({
       ...previous,
       [id]: { ...previous[id], ...answer },
     }));
-    // Limpiamos el error de esa pregunta al cambiar el valor
     setErrors((prev) => {
       if (!prev[id]) return prev;
       const copia = { ...prev };
@@ -404,7 +456,6 @@ function PublicForm({
     });
   }
 
-  /** Valida las preguntas visibles de la sección actual. */
   function validateVisible(): boolean {
     const nuevosErrores: Record<number, string> = {};
     for (const q of questions) {
@@ -727,10 +778,7 @@ function QuestionField({
             }
             let num = Number(raw);
             if (Number.isNaN(num)) return;
-
-            // Si excede el máximo, lo recortamos al máximo
             if (reglas.max !== undefined && num > reglas.max) num = reglas.max;
-            // Forzar entero si aplica
             if (reglas.esEntero) num = Math.trunc(num);
             update({ valorNumero: num });
           }}
