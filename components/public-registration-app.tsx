@@ -5,12 +5,14 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ClipboardList,
   FileText,
+  List,
   Loader2,
   LockKeyhole,
   MapPin,
   PartyPopper,
-  UsersRound,
+  Tag,
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -58,6 +60,36 @@ async function request(path: string, options: RequestInit = {}) {
 
 export function PublicRegistrationApp() {
   const [done, setDone] = useState(false);
+  const [started, setStarted] = useState(false);
+  const [schema, setSchema] = useState<FormSchema | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    request(`/formulario/${FORMULARIO_ID}`)
+      .then(setSchema)
+      .catch((error) => setNotice(error.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <main className="empty-state">
+        <Loader2 className="spin" />
+        <p>Cargando formulario...</p>
+      </main>
+    );
+  }
+
+  if (!schema) {
+    return (
+      <main className="empty-state">
+        <h1>Formulario no disponible</h1>
+        <p>{notice || "No se pudo cargar el formulario."}</p>
+      </main>
+    );
+  }
 
   if (done) {
     return (
@@ -68,13 +100,13 @@ export function PublicRegistrationApp() {
         <div className="page-kicker">GRACIAS</div>
         <h1>¡Registro completado!</h1>
         <p>
-          Tu información fue enviada correctamente. ¡Nos vemos en la pista!
-          💃🕺
+          Tu información fue enviada correctamente. ¡Nos vemos en la pista! 💃🕺
         </p>
         <button
           className="primary-button"
           onClick={() => {
             setDone(false);
+            setStarted(false);
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         >
@@ -84,42 +116,85 @@ export function PublicRegistrationApp() {
     );
   }
 
+  if (!started) {
+    return <WelcomeScreen schema={schema} onStart={() => setStarted(true)} />;
+  }
+
   return (
     <PublicForm
-      formId={FORMULARIO_ID}
+      schema={schema}
       eventoId={EVENTO_ID}
       onDone={() => setDone(true)}
     />
   );
 }
 
+function WelcomeScreen({
+  schema,
+  onStart,
+}: {
+  schema: FormSchema;
+  onStart: () => void;
+}) {
+  const total = schema.secciones.length;
+
+  return (
+    <div className="welcome-page">
+      <div className="welcome-bg" aria-hidden="true">
+        <span className="blob blob-orange" />
+        <span className="blob blob-teal" />
+        <span className="blob blob-yellow" />
+        <span className="blob blob-blue" />
+      </div>
+
+      <header className="welcome-header">
+        <span className="welcome-chip">
+          <span className="welcome-dot" />
+          Portal de Registro Oficial
+        </span>
+      </header>
+
+      <main className="welcome-card">
+        <div className="welcome-icon">
+          <ClipboardList />
+        </div>
+        <div className="welcome-kicker">BIENVENIDO/A</div>
+
+        <h1>{schema.nombre}</h1>
+        <p>{schema.descripcion}</p>
+
+        <div className="welcome-meta">
+          <span className="welcome-badge">
+            <Tag /> Versión {schema.version}
+          </span>
+          <span className="welcome-badge">
+            <List /> {total} {total === 1 ? "sección" : "secciones"}
+          </span>
+        </div>
+
+        <button className="welcome-cta" onClick={onStart}>
+          Registrarse <ArrowRight />
+        </button>
+      </main>
+    </div>
+  );
+}
+
 function PublicForm({
-  formId,
+  schema,
   eventoId,
   onDone,
 }: {
-  formId: number;
+  schema: FormSchema;
   eventoId: number;
   onDone: () => void;
 }) {
-  const [schema, setSchema] = useState<FormSchema | null>(null);
   const [answers, setAnswers] = useState<Record<number, Answer>>({});
   const [step, setStep] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
 
-  useEffect(() => {
-    setLoading(true);
-    request(`/formulario/${formId}`)
-      .then(setSchema)
-      .catch((error) => setNotice(error.message))
-      .finally(() => setLoading(false));
-  }, [formId]);
-
   const sections = useMemo(() => {
-    if (!schema) return [];
-    // Ya NO se agrega la sección de datos personales
     return [...schema.secciones].sort((a, b) => a.orden - b.orden);
   }, [schema]);
 
@@ -184,11 +259,8 @@ function PublicForm({
           ...answer,
         }),
       );
-      const payload = {
-        eventoId,
-        respuestas,
-      };
-      await request(`/registro/publico/${formId}`, {
+      const payload = { eventoId, respuestas };
+      await request(`/registro/publico/${schema.id}`, {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -213,21 +285,14 @@ function PublicForm({
     }
   }
 
-  if (loading)
-    return (
-      <main className="empty-state">
-        <Loader2 className="spin" />
-        <p>Cargando formulario...</p>
-      </main>
-    );
-
-  if (!schema || !current)
+  if (!current) {
     return (
       <main className="empty-state">
         <h1>Formulario no disponible</h1>
         <p>{notice || "No encontramos preguntas para este formulario."}</p>
       </main>
     );
+  }
 
   const percentage = Math.round(((step + 1) / sections.length) * 100);
 
