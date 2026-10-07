@@ -514,7 +514,7 @@ function PublicForm({
                 {schema.nombre}
               </span>
             </div>
-            <h1 className="mt-1 text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+            <h1 className="mt-1 text-xl font-extrabold uppercase tracking-tight text-slate-900 sm:text-2xl">
               {current.nombre}
             </h1>
           </div>
@@ -544,7 +544,7 @@ function PublicForm({
         {/* Contenido */}
         <main
           ref={scrollRef}
-          className="absolute inset-0 overflow-y-auto overscroll-contain px-6 pb-28 pt-44"
+          className="absolute inset-0 overflow-y-auto overscroll-contain px-6 pb-28 pt-50"
         >
           <QuestionSection
             section={current}
