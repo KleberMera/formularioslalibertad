@@ -44,6 +44,10 @@ type QuestionRules = {
   decimales?: number;
   minSeleccion?: number;
   maxSeleccion?: number;
+  minFecha?: string;
+  maxFecha?: string;
+  fechaNoPasada?: boolean;
+  fechaNoFutura?: boolean;
 };
 
 type Question = {
@@ -95,7 +99,16 @@ async function request(path: string, options: RequestInit = {}) {
 
 function getKind(
   tipo: string,
-): "texto" | "textarea" | "numero" | "unica" | "multiple" {
+):
+  | "texto"
+  | "textarea"
+  | "numero"
+  | "unica"
+  | "multiple"
+  | "fecha"
+  | "hora"
+  | "fechaHora"
+  | "email" {
   const t = String(tipo || "TEXTO")
     .toUpperCase()
     .replace(/[-_ ]/g, "");
@@ -105,6 +118,10 @@ function getKind(
   if (t === "UNICA" || t === "UNIQUE" || t === "RADIO" || t === "SELECT")
     return "unica";
   if (t === "MULTIPLE" || t === "MULTI" || t === "CHECKBOX") return "multiple";
+  if (t === "FECHA" || t === "DATE") return "fecha";
+  if (t === "HORA" || t === "TIME") return "hora";
+  if (t === "FECHAHORA" || t === "DATETIME") return "fechaHora";
+  if (t === "EMAIL" || t === "CORREO") return "email";
   return "texto";
 }
 
@@ -200,6 +217,60 @@ function validarPregunta(
     }
     if (reglas.maxSeleccion !== undefined && n > reglas.maxSeleccion) {
       return `Máximo ${reglas.maxSeleccion} opción(es)`;
+    }
+    return null;
+  }
+
+  if (kind === "fecha") {
+    const valor = answer?.valorTexto?.trim() ?? "";
+    if (!valor) return req ? "Este campo es obligatorio" : null;
+    if (reglas.minFecha && valor < reglas.minFecha) {
+      return `La fecha no puede ser anterior a ${reglas.minFecha}`;
+    }
+    if (reglas.maxFecha && valor > reglas.maxFecha) {
+      return `La fecha no puede ser posterior a ${reglas.maxFecha}`;
+    }
+    if (reglas.fechaNoPasada) {
+      const hoy = new Date().toISOString().slice(0, 10);
+      if (valor < hoy) return "La fecha no puede ser anterior a hoy";
+    }
+    if (reglas.fechaNoFutura) {
+      const hoy = new Date().toISOString().slice(0, 10);
+      if (valor > hoy) return "La fecha no puede ser posterior a hoy";
+    }
+    return null;
+  }
+
+  if (kind === "hora") {
+    const valor = answer?.valorTexto?.trim() ?? "";
+    if (!valor) return req ? "Este campo es obligatorio" : null;
+    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(valor)) {
+      return "Formato de hora inválido";
+    }
+    return null;
+  }
+
+  if (kind === "fechaHora") {
+    const valor = answer?.valorTexto?.trim() ?? "";
+    if (!valor) return req ? "Este campo es obligatorio" : null;
+    // datetime-local da "YYYY-MM-DDTHH:mm"
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(valor)) {
+      return "Formato de fecha y hora inválido";
+    }
+    if (reglas.minFecha && valor.slice(0, 10) < reglas.minFecha) {
+      return `La fecha no puede ser anterior a ${reglas.minFecha}`;
+    }
+    if (reglas.maxFecha && valor.slice(0, 10) > reglas.maxFecha) {
+      return `La fecha no puede ser posterior a ${reglas.maxFecha}`;
+    }
+    return null;
+  }
+
+  if (kind === "email") {
+    const valor = answer?.valorTexto?.trim() ?? "";
+    if (!valor) return req ? "Este campo es obligatorio" : null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) {
+      return "Correo electrónico inválido";
     }
     return null;
   }
@@ -841,6 +912,50 @@ function QuestionField({
             );
           })}
         </div>
+      ) : kind === "fecha" ? (
+        <input
+          id={inputId}
+          type="date"
+          value={answer.valorTexto || ""}
+          min={reglas.minFecha}
+          max={reglas.maxFecha}
+          aria-invalid={!!error}
+          className={inputClass}
+          onChange={(event) => update({ valorTexto: event.target.value })}
+        />
+      ) : kind === "hora" ? (
+        <input
+          id={inputId}
+          type="time"
+          value={answer.valorTexto || ""}
+          aria-invalid={!!error}
+          className={inputClass}
+          onChange={(event) => update({ valorTexto: event.target.value })}
+        />
+      ) : kind === "fechaHora" ? (
+        <input
+          id={inputId}
+          type="datetime-local"
+          value={answer.valorTexto || ""}
+          min={reglas.minFecha ? `${reglas.minFecha}T00:00` : undefined}
+          max={reglas.maxFecha ? `${reglas.maxFecha}T23:59` : undefined}
+          aria-invalid={!!error}
+          className={inputClass}
+          onChange={(event) => update({ valorTexto: event.target.value })}
+        />
+      ) : kind === "email" ? (
+        <input
+          id={inputId}
+          type="email"
+          value={answer.valorTexto || ""}
+          maxLength={reglas.maxLength}
+          placeholder="correo@ejemplo.com"
+          aria-invalid={!!error}
+          className={inputClass}
+          onChange={(event) =>
+            update({ valorTexto: event.target.value.trim() })
+          }
+        />
       ) : (
         <input
           id={inputId}
