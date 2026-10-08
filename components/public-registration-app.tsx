@@ -461,17 +461,17 @@ function WelcomeScreen({
         </div>
         {/* Contenido */}
         <div className="relative px-6 pb-7 pt-0 text-center">
-          <div className="relative z-10 mx-auto -mt-7 flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-200 bg-white text-brand-500 shadow-lg shadow-brand-500/20">
+          {/* <div className="relative z-10 mx-auto -mt-7 flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-200 bg-white text-brand-500 shadow-lg shadow-brand-500/20">
             <ClipboardList className="h-6 w-6" />
-          </div>
+          </div> */}
 
-          <span className="mt-3 block text-xs font-extrabold uppercase tracking-[0.18em] text-brand-500">
+          {/* <span className="mt-3 block text-xs font-extrabold uppercase tracking-[0.18em] text-brand-500">
             Bienvenido/a
           </span>
 
           <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight text-slate-900">
             {schema.nombre}
-          </h1>
+          </h1> */}
 
           <button
             type="button"
