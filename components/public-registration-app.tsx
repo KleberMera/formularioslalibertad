@@ -450,7 +450,7 @@ function WelcomeScreen({
         {/* Afiche */}
         <div className="relative w-full bg-slate-900">
           <img
-            src="/afiche.jpg"
+            src="afiche.jpg"
             alt={`Afiche oficial ${schema.nombre}`}
             className="block h-auto w-full object-cover object-center"
           />
