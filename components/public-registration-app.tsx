@@ -332,7 +332,7 @@ export function PublicRegistrationApp() {
           <h1>¡Registro completado!</h1>
 
           <p className="thanks-lead">
-            ¡Gracias por registrarte en <strong>La Libertad Baila</strong>! 💃🕺
+            ¡Gracias por registrarte en <strong>La Libertad Dancing</strong>! 💃🕺
           </p>
           <p>
             Tu información nos ayudará a conocer y conectar a los bailarines de
