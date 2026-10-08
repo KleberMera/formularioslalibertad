@@ -763,18 +763,21 @@ function QuestionSection({
   update: (id: number, answer: Answer) => void;
   visible: (question: Question) => boolean;
 }) {
-  const preguntas = section.preguntas.filter(visible);
+  const preguntas = section.preguntas
+    .filter(visible)
+    .sort((a, b) => a.orden - b.orden);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {preguntas.length === 0 ? (
         <div className="rounded-2xl bg-brand-50 p-5 text-sm text-slate-500">
           Esta sección no tiene preguntas visibles.
         </div>
       ) : (
-        preguntas.map((question) => (
+        preguntas.map((question, index) => (
           <QuestionField
             key={question.id}
+            numero={index + 1}
             question={question}
             answer={answers[question.id] || {}}
             error={errors[question.id]}
@@ -799,11 +802,13 @@ const optionText =
   "text-sm font-medium text-slate-700 group-has-[:checked]:font-semibold group-has-[:checked]:text-slate-900";
 
 function QuestionField({
+  numero,
   question,
   answer,
   error,
   update,
 }: {
+  numero: number;
   question: Question;
   answer: Answer;
   error?: string;
@@ -828,199 +833,214 @@ function QuestionField({
   };
 
   return (
-    <div className="space-y-2.5">
-      <label
-        htmlFor={isGroup ? undefined : inputId}
-        className="block text-xs font-extrabold uppercase leading-snug tracking-wider text-slate-800"
-      >
-        {question.enunciado}
-        {question.obligatoria && (
-          <span className="ml-0.5 text-brand-500" aria-label="obligatorio">
-            {" "}
-            *
-          </span>
-        )}
-      </label>
-
-      {kind === "multiple" && isGroup && (
-        <p className="text-[11px] font-medium text-slate-500">
-          {reglas.maxSeleccion
-            ? `Selecciona hasta ${reglas.maxSeleccion} opciones`
-            : "Puedes seleccionar más de una opción"}
-        </p>
-      )}
-
-      {kind === "textarea" ? (
-        <>
-          <textarea
-            id={inputId}
-            value={answer.valorTexto || ""}
-            rows={4}
-            maxLength={reglas.maxLength}
-            placeholder="Escribe tu respuesta..."
-            aria-invalid={!!error}
-            className={`${inputClass} resize-y`}
-            {...textHandlers}
-          />
-          {reglas.maxLength !== undefined && (
-            <p className="text-right text-[11px] text-slate-400">
-              {(answer.valorTexto || "").length}/{reglas.maxLength}
-            </p>
+    <section
+      className={`rounded-2xl border bg-white p-4 shadow-sm transition-all sm:p-5 ${
+        error ? "border-rose-300" : "border-slate-200/90"
+      }`}
+    >
+      {/* Encabezado de la pregunta */}
+      <div className="mb-3.5 flex items-start gap-2.5">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-orange-200/80 bg-orange-50 text-xs font-black text-brand-500">
+          {numero}
+        </span>
+        <label
+          htmlFor={isGroup ? undefined : inputId}
+          className="block text-[13.5px] font-extrabold uppercase leading-snug tracking-tight text-slate-900"
+        >
+          {question.enunciado}
+          {question.obligatoria && (
+            <span
+              className="ml-1 font-black text-brand-500"
+              aria-label="obligatorio"
+            >
+              *
+            </span>
           )}
-        </>
-      ) : kind === "numero" ? (
-        <input
-          id={inputId}
-          type="number"
-          inputMode={reglas.esEntero ? "numeric" : "decimal"}
-          value={answer.valorNumero ?? ""}
-          min={reglas.min}
-          max={reglas.max}
-          step={reglas.esEntero ? 1 : "any"}
-          placeholder="Ingresa un número"
-          aria-invalid={!!error}
-          className={inputClass}
-          onChange={(event) => {
-            const raw = event.target.value;
-            if (raw === "") {
-              update({ valorNumero: undefined });
-              return;
-            }
-            let num = Number(raw);
-            if (Number.isNaN(num)) return;
-            if (reglas.max !== undefined && num > reglas.max) num = reglas.max;
-            if (reglas.esEntero) num = Math.trunc(num);
-            update({ valorNumero: num });
-          }}
-          onKeyDown={(event) => {
-            if (reglas.esEntero && (event.key === "." || event.key === ",")) {
-              event.preventDefault();
-            }
-          }}
-        />
-      ) : kind === "unica" && options.length > 0 ? (
-        <div className="space-y-2.5">
-          {options.map((option) => (
-            <label className={optionCard} key={option.id}>
-              <span className={optionText}>{option.texto}</span>
-              <input
-                type="radio"
-                name={inputId}
-                className="peer sr-only"
-                checked={answer.opcionId === option.id}
-                onChange={() => update({ opcionId: option.id })}
-              />
-              <span className="h-4 w-4 shrink-0 rounded-full border border-slate-300 bg-white transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:ring-4 peer-checked:ring-brand-100" />
-            </label>
-          ))}
-        </div>
-      ) : kind === "multiple" && options.length > 0 ? (
-        <div className="space-y-2.5">
-          {options.map((option) => {
-            const seleccionadas = answer.opciones || [];
-            const yaSeleccionada = seleccionadas.includes(option.id);
-            const alcanzoMax =
-              reglas.maxSeleccion !== undefined &&
-              seleccionadas.length >= reglas.maxSeleccion &&
-              !yaSeleccionada;
+        </label>
+      </div>
 
-            return (
+      <div className="space-y-2.5">
+        {kind === "multiple" && isGroup && (
+          <p className="text-[11px] font-medium text-slate-500">
+            {reglas.maxSeleccion
+              ? `Selecciona hasta ${reglas.maxSeleccion} opciones`
+              : "Puedes seleccionar más de una opción"}
+          </p>
+        )}
+
+        {kind === "textarea" ? (
+          <>
+            <textarea
+              id={inputId}
+              value={answer.valorTexto || ""}
+              rows={4}
+              maxLength={reglas.maxLength}
+              placeholder="Escribe tu respuesta..."
+              aria-invalid={!!error}
+              className={`${inputClass} resize-y`}
+              {...textHandlers}
+            />
+            {reglas.maxLength !== undefined && (
+              <p className="text-right text-[11px] text-slate-400">
+                {(answer.valorTexto || "").length}/{reglas.maxLength}
+              </p>
+            )}
+          </>
+        ) : kind === "numero" ? (
+          <input
+            id={inputId}
+            type="number"
+            inputMode={reglas.esEntero ? "numeric" : "decimal"}
+            value={answer.valorNumero ?? ""}
+            min={reglas.min}
+            max={reglas.max}
+            step={reglas.esEntero ? 1 : "any"}
+            placeholder="Ingresa un número"
+            aria-invalid={!!error}
+            className={inputClass}
+            onChange={(event) => {
+              const raw = event.target.value;
+              if (raw === "") {
+                update({ valorNumero: undefined });
+                return;
+              }
+              let num = Number(raw);
+              if (Number.isNaN(num)) return;
+              if (reglas.max !== undefined && num > reglas.max)
+                num = reglas.max;
+              if (reglas.esEntero) num = Math.trunc(num);
+              update({ valorNumero: num });
+            }}
+            onKeyDown={(event) => {
+              if (reglas.esEntero && (event.key === "." || event.key === ",")) {
+                event.preventDefault();
+              }
+            }}
+          />
+        ) : kind === "unica" && options.length > 0 ? (
+          <div className="space-y-2.5">
+            {options.map((option) => (
               <label className={optionCard} key={option.id}>
                 <span className={optionText}>{option.texto}</span>
                 <input
-                  type="checkbox"
+                  type="radio"
                   name={inputId}
                   className="peer sr-only"
-                  checked={yaSeleccionada}
-                  disabled={alcanzoMax}
-                  onChange={(event) =>
-                    update({
-                      opciones: event.target.checked
-                        ? [...seleccionadas, option.id]
-                        : seleccionadas.filter((id) => id !== option.id),
-                    })
-                  }
+                  checked={answer.opcionId === option.id}
+                  onChange={() => update({ opcionId: option.id })}
                 />
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-white transition peer-checked:border-brand-500 peer-checked:bg-brand-500">
-                  <Check
-                    className="h-3.5 w-3.5 opacity-0 transition group-has-[:checked]:opacity-100"
-                    strokeWidth={3}
-                  />
-                </span>
+                <span className="h-4 w-4 shrink-0 rounded-full border border-slate-300 bg-white transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:ring-4 peer-checked:ring-brand-100" />
               </label>
-            );
-          })}
-        </div>
-      ) : kind === "fecha" ? (
-        <input
-          id={inputId}
-          type="date"
-          value={answer.valorTexto || ""}
-          min={reglas.minFecha}
-          max={reglas.maxFecha}
-          aria-invalid={!!error}
-          className={inputClass}
-          onChange={(event) => update({ valorTexto: event.target.value })}
-          onClick={abrirPicker}
-          onFocus={abrirPicker}
-        />
-      ) : kind === "hora" ? (
-        <input
-          id={inputId}
-          type="time"
-          value={answer.valorTexto || ""}
-          aria-invalid={!!error}
-          className={inputClass}
-          onChange={(event) => update({ valorTexto: event.target.value })}
-          onClick={abrirPicker}
-          onFocus={abrirPicker}
-        />
-      ) : kind === "fechaHora" ? (
-        <input
-          id={inputId}
-          type="datetime-local"
-          value={answer.valorTexto || ""}
-          min={reglas.minFecha ? `${reglas.minFecha}T00:00` : undefined}
-          max={reglas.maxFecha ? `${reglas.maxFecha}T23:59` : undefined}
-          aria-invalid={!!error}
-          className={inputClass}
-          onChange={(event) => update({ valorTexto: event.target.value })}
-          onClick={abrirPicker}
-          onFocus={abrirPicker}
-        />
-      ) : kind === "email" ? (
-        <input
-          id={inputId}
-          type="email"
-          value={answer.valorTexto || ""}
-          maxLength={reglas.maxLength}
-          placeholder="correo@ejemplo.com"
-          aria-invalid={!!error}
-          className={inputClass}
-          onChange={(event) =>
-            update({ valorTexto: event.target.value.trim() })
-          }
-        />
-      ) : (
-        <input
-          id={inputId}
-          type="text"
-          value={answer.valorTexto || ""}
-          maxLength={reglas.maxLength}
-          placeholder="Escribe tu respuesta..."
-          aria-invalid={!!error}
-          className={inputClass}
-          {...textHandlers}
-        />
-      )}
+            ))}
+          </div>
+        ) : kind === "multiple" && options.length > 0 ? (
+          <div className="space-y-2.5">
+            {options.map((option) => {
+              const seleccionadas = answer.opciones || [];
+              const yaSeleccionada = seleccionadas.includes(option.id);
+              const alcanzoMax =
+                reglas.maxSeleccion !== undefined &&
+                seleccionadas.length >= reglas.maxSeleccion &&
+                !yaSeleccionada;
 
-      {error && (
-        <p className="flex items-center gap-1.5 text-xs font-medium text-rose-600">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          {error}
-        </p>
-      )}
-    </div>
+              return (
+                <label className={optionCard} key={option.id}>
+                  <span className={optionText}>{option.texto}</span>
+                  <input
+                    type="checkbox"
+                    name={inputId}
+                    className="peer sr-only"
+                    checked={yaSeleccionada}
+                    disabled={alcanzoMax}
+                    onChange={(event) =>
+                      update({
+                        opciones: event.target.checked
+                          ? [...seleccionadas, option.id]
+                          : seleccionadas.filter((id) => id !== option.id),
+                      })
+                    }
+                  />
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-white transition peer-checked:border-brand-500 peer-checked:bg-brand-500">
+                    <Check
+                      className="h-3.5 w-3.5 opacity-0 transition group-has-[:checked]:opacity-100"
+                      strokeWidth={3}
+                    />
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ) : kind === "fecha" ? (
+          <input
+            id={inputId}
+            type="date"
+            value={answer.valorTexto || ""}
+            min={reglas.minFecha}
+            max={reglas.maxFecha}
+            aria-invalid={!!error}
+            className={inputClass}
+            onChange={(event) => update({ valorTexto: event.target.value })}
+            onClick={abrirPicker}
+            onFocus={abrirPicker}
+          />
+        ) : kind === "hora" ? (
+          <input
+            id={inputId}
+            type="time"
+            value={answer.valorTexto || ""}
+            aria-invalid={!!error}
+            className={inputClass}
+            onChange={(event) => update({ valorTexto: event.target.value })}
+            onClick={abrirPicker}
+            onFocus={abrirPicker}
+          />
+        ) : kind === "fechaHora" ? (
+          <input
+            id={inputId}
+            type="datetime-local"
+            value={answer.valorTexto || ""}
+            min={reglas.minFecha ? `${reglas.minFecha}T00:00` : undefined}
+            max={reglas.maxFecha ? `${reglas.maxFecha}T23:59` : undefined}
+            aria-invalid={!!error}
+            className={inputClass}
+            onChange={(event) => update({ valorTexto: event.target.value })}
+            onClick={abrirPicker}
+            onFocus={abrirPicker}
+          />
+        ) : kind === "email" ? (
+          <input
+            id={inputId}
+            type="email"
+            value={answer.valorTexto || ""}
+            maxLength={reglas.maxLength}
+            placeholder="correo@ejemplo.com"
+            aria-invalid={!!error}
+            className={inputClass}
+            onChange={(event) =>
+              update({ valorTexto: event.target.value.trim() })
+            }
+          />
+        ) : (
+          <input
+            id={inputId}
+            type="text"
+            value={answer.valorTexto || ""}
+            maxLength={reglas.maxLength}
+            placeholder="Escribe tu respuesta..."
+            aria-invalid={!!error}
+            className={inputClass}
+            {...textHandlers}
+          />
+        )}
+
+        {error && (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-rose-600">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {error}
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
