@@ -384,3 +384,96 @@
   width: 100%;
   justify-content: center;
 }
+
+/* Afiche */
+.welcome-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 20rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.welcome-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.welcome-hero-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.9),
+    transparent 45%,
+    rgba(0, 0, 0, 0.25)
+  );
+  pointer-events: none;
+}
+.welcome-hero-badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: #f05a22;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* El icono sube y se superpone al afiche */
+.welcome-icon-overlap {
+  position: relative;
+  margin: -2rem auto 0.5rem;
+  z-index: 1;
+}
+
+/* Detalles del evento */
+.welcome-info {
+  margin: 1rem 0;
+  padding: 1rem;
+  text-align: left;
+  border-radius: 1rem;
+  border: 1px solid #fed7aa;
+  background: linear-gradient(135deg, #fff7ed, #fffbeb);
+}
+.welcome-info-title {
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #fed7aa;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f05a22;
+}
+.welcome-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.welcome-info-row + .welcome-info-row {
+  margin-top: 0.75rem;
+}
+.welcome-info-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.welcome-info-text small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.welcome-info-text strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}

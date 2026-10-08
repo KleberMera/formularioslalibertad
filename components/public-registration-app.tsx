@@ -409,13 +409,35 @@ function WelcomeScreen({
   schema: FormSchema;
   onStart: () => void;
 }) {
-  const total = schema.secciones.length;
-
   const hasEventInfo =
     schema.lugar || schema.fecha || schema.hora || schema.participacion;
 
+  const detalles = [
+    schema.lugar && { icon: MapPin, label: "Lugar", value: schema.lugar },
+    schema.fecha && {
+      icon: Calendar,
+      label: "Fecha",
+      value: new Date(schema.fecha + "T00:00:00").toLocaleDateString("es-EC", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    },
+    schema.hora && { icon: Clock, label: "Hora", value: schema.hora },
+    schema.participacion && {
+      icon: Gift,
+      label: "Participación",
+      value: schema.participacion,
+    },
+  ].filter(Boolean) as {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    value: string;
+  }[];
+
   return (
-    <div className="welcome-page">
+    <div className="relative flex min-h-screen items-center justify-center overflow-x-hidden bg-slate-50 sm:px-4 sm:py-6">
+      {/* Fondo decorativo (CSS global) */}
       <div className="welcome-bg" aria-hidden="true">
         <span className="blob blob-orange" />
         <span className="blob blob-teal" />
@@ -423,73 +445,79 @@ function WelcomeScreen({
         <span className="blob blob-blue" />
       </div>
 
-      <main className="welcome-card">
-        <div className="welcome-icon">
-          <ClipboardList />
+      <main className="relative z-10 min-h-screen w-full overflow-hidden bg-white sm:min-h-0 sm:max-w-md sm:rounded-3xl sm:border sm:border-slate-100 sm:shadow-2xl sm:shadow-slate-900/15">
+        {" "}
+        {/* Afiche */}
+        <div className="relative w-full bg-slate-900">
+          <img
+            src="/afiche.jpg"
+            alt={`Afiche oficial ${schema.nombre}`}
+            className="block h-auto w-full object-cover object-center"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-linear-to-b from-slate-900/20 via-transparent to-white/15"
+          />
         </div>
-        <div className="welcome-kicker">BIENVENIDO/A</div>
-
-        <h1>{schema.nombre}</h1>
-
-        <button className="welcome-cta" onClick={onStart}>
-          Registrarse <ArrowRight />
-        </button>
-
-        <p className="whitespace-pre-line text-left pt-6">{schema.descripcion}</p>
-
-        {hasEventInfo && (
-          <div className="welcome-info">
-            {schema.lugar && (
-              <div className="welcome-info-row">
-                <span className="welcome-info-icon">
-                  <MapPin className="h-4 w-4" />
-                </span>
-                <span>
-                  <strong>Lugar:</strong> {schema.lugar}
-                </span>
-              </div>
-            )}
-            {schema.fecha && (
-              <div className="welcome-info-row">
-                <span className="welcome-info-icon">
-                  <Calendar className="h-4 w-4" />
-                </span>
-                <span>
-                  <strong>Fecha:</strong>{" "}
-                  {new Date(schema.fecha + "T00:00:00").toLocaleDateString(
-                    "es-EC",
-                    { day: "numeric", month: "long", year: "numeric" },
-                  )}
-                </span>
-              </div>
-            )}
-            {schema.hora && (
-              <div className="welcome-info-row">
-                <span className="welcome-info-icon">
-                  <Clock className="h-4 w-4" />
-                </span>
-                <span>
-                  <strong>Hora:</strong> {schema.hora}
-                </span>
-              </div>
-            )}
-            {schema.participacion && (
-              <div className="welcome-info-row">
-                <span className="welcome-info-icon">
-                  <Gift className="h-4 w-4" />
-                </span>
-                <span>
-                  <strong>Participación:</strong> {schema.participacion}
-                </span>
-              </div>
-            )}
+        {/* Contenido */}
+        <div className="relative px-6 pb-7 pt-0 text-center">
+          <div className="relative z-10 mx-auto -mt-7 flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-200 bg-white text-brand-500 shadow-lg shadow-brand-500/20">
+            <ClipboardList className="h-6 w-6" />
           </div>
-        )}
+
+          <span className="mt-3 block text-xs font-extrabold uppercase tracking-[0.18em] text-brand-500">
+            Bienvenido/a
+          </span>
+
+          <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight text-slate-900">
+            {schema.nombre}
+          </h1>
+
+          <button
+            type="button"
+            onClick={onStart}
+            className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-500 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-brand-500/40 transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-600 hover:shadow-xl hover:shadow-brand-500/50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200 active:translate-y-0 active:scale-[0.98]"
+          >
+            Registrarse
+            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+          </button>
+
+          {/* Detalles del evento */}
+          {hasEventInfo && (
+            <section className="mt-5 rounded-2xl border border-orange-200 bg-linear-to-br from-orange-50 to-amber-50 p-4 text-left">
+              <h2 className="mb-3 border-b border-orange-200 pb-2.5 text-[11px] font-extrabold uppercase tracking-wider text-brand-500">
+                Detalles del evento
+              </h2>
+
+              <ul className="m-0 flex list-none flex-col gap-3 p-0">
+                {detalles.map(({ icon: Icon, label, value }) => (
+                  <li key={label} className="flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-orange-200/70 bg-white text-brand-500">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="flex min-w-0 flex-col leading-tight">
+                      <small className="text-[11px] font-bold uppercase text-slate-500">
+                        {label}
+                      </small>
+                      <strong className="text-sm font-semibold text-slate-800">
+                        {value}
+                      </strong>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Descripción */}
+          <p className="mt-6 whitespace-pre-line text-left text-sm leading-relaxed text-slate-600">
+            {schema.descripcion}
+          </p>
+        </div>
       </main>
     </div>
   );
 }
-
 /* ----------------------------- Formulario ----------------------------- */
 
 function PublicForm({
