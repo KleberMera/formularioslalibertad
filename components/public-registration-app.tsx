@@ -691,7 +691,7 @@ function PublicForm({
         {/* Contenido */}
         <main
           ref={scrollRef}
-          className="absolute inset-0 overflow-y-auto overscroll-contain px-6 pb-28 pt-48"
+          className="absolute inset-0 overflow-y-auto overscroll-contain px-6 pb-28 pt-46"
         >
           <QuestionSection
             section={current}
