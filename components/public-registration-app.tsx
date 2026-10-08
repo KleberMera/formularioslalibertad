@@ -6,7 +6,9 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FocusEvent,
   type KeyboardEvent,
+  type MouseEvent,
 } from "react";
 import {
   AlertCircle,
@@ -123,6 +125,25 @@ function getKind(
   if (t === "FECHAHORA" || t === "DATETIME") return "fechaHora";
   if (t === "EMAIL" || t === "CORREO") return "email";
   return "texto";
+}
+
+/**
+ * Abre el selector nativo del input (date / time / datetime-local)
+ * al hacer click o focus sobre cualquier parte del campo.
+ * Usa showPicker() cuando está disponible; si no, no hace nada
+ * y el usuario sigue pudiendo usar el icono del navegador.
+ */
+function abrirPicker(
+  event: MouseEvent<HTMLInputElement> | FocusEvent<HTMLInputElement>,
+) {
+  const input = event.currentTarget;
+  if ("showPicker" in input) {
+    try {
+      input.showPicker();
+    } catch {
+      /* Algunos navegadores lo bloquean si no es gesto directo del usuario */
+    }
+  }
 }
 
 function filtrarTexto(valor: string, reglas?: QuestionRules): string {
@@ -253,7 +274,6 @@ function validarPregunta(
   if (kind === "fechaHora") {
     const valor = answer?.valorTexto?.trim() ?? "";
     if (!valor) return req ? "Este campo es obligatorio" : null;
-    // datetime-local da "YYYY-MM-DDTHH:mm"
     if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(valor)) {
       return "Formato de fecha y hora inválido";
     }
@@ -332,7 +352,7 @@ export function PublicRegistrationApp() {
           <h1>¡Registro completado!</h1>
 
           <p className="thanks-lead">
-            ¡Gracias por registrarte en <strong>La Libertad Dancing</strong>! 💃🕺
+            ¡Gracias por registrarte en <strong>La Libertad Baila</strong>! 💃🕺
           </p>
           <p>
             Tu información nos ayudará a conocer y conectar a los bailarines de
@@ -412,7 +432,6 @@ function WelcomeScreen({
         <h1>{schema.nombre}</h1>
         <p className="whitespace-pre-line text-left">{schema.descripcion}</p>
 
-        {/* 👇 Bloque de info del evento (solo si hay datos) */}
         {hasEventInfo && (
           <div className="welcome-info">
             {schema.lugar && (
@@ -461,15 +480,6 @@ function WelcomeScreen({
             )}
           </div>
         )}
-
-        {/* <div className="welcome-meta">
-          <span className="welcome-badge">
-            <Tag /> Versión {schema.version}
-          </span>
-          <span className="welcome-badge">
-            <List /> {total} {total === 1 ? "sección" : "secciones"}
-          </span>
-        </div> */}
 
         <button className="welcome-cta" onClick={onStart}>
           Registrarse <ArrowRight />
@@ -922,6 +932,8 @@ function QuestionField({
           aria-invalid={!!error}
           className={inputClass}
           onChange={(event) => update({ valorTexto: event.target.value })}
+          onClick={abrirPicker}
+          onFocus={abrirPicker}
         />
       ) : kind === "hora" ? (
         <input
@@ -931,6 +943,8 @@ function QuestionField({
           aria-invalid={!!error}
           className={inputClass}
           onChange={(event) => update({ valorTexto: event.target.value })}
+          onClick={abrirPicker}
+          onFocus={abrirPicker}
         />
       ) : kind === "fechaHora" ? (
         <input
@@ -942,6 +956,8 @@ function QuestionField({
           aria-invalid={!!error}
           className={inputClass}
           onChange={(event) => update({ valorTexto: event.target.value })}
+          onClick={abrirPicker}
+          onFocus={abrirPicker}
         />
       ) : kind === "email" ? (
         <input
