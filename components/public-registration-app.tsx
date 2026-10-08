@@ -16,15 +16,12 @@ import {
   ArrowRight,
   Calendar,
   Check,
-  ClipboardList,
   Clock,
   Gift,
-  List,
   Loader2,
   MapPin,
   MessageCircle,
   PartyPopper,
-  Tag,
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -50,6 +47,7 @@ type QuestionRules = {
   maxFecha?: string;
   fechaNoPasada?: boolean;
   fechaNoFutura?: boolean;
+  fechaNoHoy?: boolean;
 };
 
 type Question = {
@@ -113,25 +111,78 @@ function getKind(
   | "email" {
   const t = String(tipo || "TEXTO")
     .toUpperCase()
-    .replace(/[-_ ]/g, "");
-  if (t === "TEXTAREA" || t === "TEXTOLARGO") return "textarea";
-  if (t === "NUMERO" || t === "NUMBER" || t === "INTEGER" || t === "DECIMAL")
-    return "numero";
-  if (t === "UNICA" || t === "UNIQUE" || t === "RADIO" || t === "SELECT")
-    return "unica";
-  if (t === "MULTIPLE" || t === "MULTI" || t === "CHECKBOX") return "multiple";
-  if (t === "FECHA" || t === "DATE") return "fecha";
-  if (t === "HORA" || t === "TIME") return "hora";
-  if (t === "FECHAHORA" || t === "DATETIME") return "fechaHora";
-  if (t === "EMAIL" || t === "CORREO") return "email";
-  return "texto";
+    .replace(/[\s_-]+/g, "");
+  switch (t) {
+    case "TEXTAREA":
+    case "TEXTOLARGO":
+    case "LONGTEXT":
+      return "textarea";
+    case "NUMERO":
+    case "NUMBER":
+    case "INTEGER":
+    case "INT":
+    case "DECIMAL":
+    case "FLOAT":
+      return "numero";
+    case "UNICA":
+    case "UNIQUE":
+    case "RADIO":
+    case "SELECT":
+    case "SINGLE":
+      return "unica";
+    case "MULTIPLE":
+    case "MULTI":
+    case "CHECKBOX":
+    case "CHECKBOXES":
+      return "multiple";
+    case "FECHA":
+    case "DATE":
+    case "CALENDAR":
+      return "fecha";
+    case "HORA":
+    case "TIME":
+      return "hora";
+    case "FECHAHORA":
+    case "DATETIME":
+    case "FECHATIEMPO":
+      return "fechaHora";
+    case "EMAIL":
+    case "CORREO":
+    case "MAIL":
+      return "email";
+    default:
+      return "texto";
+  }
+}
+
+/** Fecha de hoy en formato YYYY-MM-DD usando hora LOCAL (Ecuador). */
+function hoyLocalISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Calcula la edad en años desde una fecha YYYY-MM-DD. */
+function calcularEdad(fechaISO: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaISO)) return null;
+  const [y, m, d] = fechaISO.split("-").map(Number);
+  const nacimiento = new Date(y, m - 1, d);
+  if (Number.isNaN(nacimiento.getTime())) return null;
+
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const mDiff = hoy.getMonth() - nacimiento.getMonth();
+  if (mDiff < 0 || (mDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
+    edad--;
+  }
+  return edad >= 0 ? edad : null;
 }
 
 /**
  * Abre el selector nativo del input (date / time / datetime-local)
  * al hacer click o focus sobre cualquier parte del campo.
- * Usa showPicker() cuando está disponible; si no, no hace nada
- * y el usuario sigue pudiendo usar el icono del navegador.
  */
 function abrirPicker(
   event: MouseEvent<HTMLInputElement> | FocusEvent<HTMLInputElement>,
@@ -252,12 +303,16 @@ function validarPregunta(
       return `La fecha no puede ser posterior a ${reglas.maxFecha}`;
     }
     if (reglas.fechaNoPasada) {
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = hoyLocalISO();
       if (valor < hoy) return "La fecha no puede ser anterior a hoy";
     }
     if (reglas.fechaNoFutura) {
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = hoyLocalISO();
       if (valor > hoy) return "La fecha no puede ser posterior a hoy";
+    }
+    if (reglas.fechaNoHoy) {
+      const hoy = hoyLocalISO();
+      if (valor === hoy) return "La fecha debe ser anterior a hoy";
     }
     return null;
   }
@@ -437,7 +492,6 @@ function WelcomeScreen({
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-x-hidden bg-slate-50 sm:px-4 sm:py-6">
-      {/* Fondo decorativo (CSS global) */}
       <div className="welcome-bg" aria-hidden="true">
         <span className="blob blob-orange" />
         <span className="blob blob-teal" />
@@ -446,8 +500,6 @@ function WelcomeScreen({
       </div>
 
       <main className="relative z-10 min-h-screen w-full overflow-hidden bg-white sm:min-h-0 sm:max-w-md sm:rounded-3xl sm:border sm:border-slate-100 sm:shadow-2xl sm:shadow-slate-900/15">
-        {" "}
-        {/* Afiche */}
         <div className="relative w-full bg-slate-900">
           <img
             src="afiche.jpg"
@@ -459,20 +511,8 @@ function WelcomeScreen({
             className="pointer-events-none absolute inset-0 bg-linear-to-b from-slate-900/20 via-transparent to-white/15"
           />
         </div>
-        {/* Contenido */}
+
         <div className="relative px-6 pb-7 pt-0 text-center">
-          {/* <div className="relative z-10 mx-auto -mt-7 flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-200 bg-white text-brand-500 shadow-lg shadow-brand-500/20">
-            <ClipboardList className="h-6 w-6" />
-          </div> */}
-
-          {/* <span className="mt-3 block text-xs font-extrabold uppercase tracking-[0.18em] text-brand-500">
-            Bienvenido/a
-          </span>
-
-          <h1 className="mt-1 text-3xl font-black leading-tight tracking-tight text-slate-900">
-            {schema.nombre}
-          </h1> */}
-
           <button
             type="button"
             onClick={onStart}
@@ -482,7 +522,6 @@ function WelcomeScreen({
             <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
           </button>
 
-          {/* Detalles del evento */}
           {hasEventInfo && (
             <section className="mt-5 rounded-2xl border border-orange-200 bg-linear-to-br from-orange-50 to-amber-50 p-4 text-left">
               <h2 className="mb-3 border-b border-orange-200 pb-2.5 text-[11px] font-extrabold uppercase tracking-wider text-brand-500">
@@ -509,7 +548,6 @@ function WelcomeScreen({
             </section>
           )}
 
-          {/* Descripción */}
           <p className="mt-6 whitespace-pre-line text-left text-sm leading-relaxed text-slate-600">
             {schema.descripcion}
           </p>
@@ -518,6 +556,7 @@ function WelcomeScreen({
     </div>
   );
 }
+
 /* ----------------------------- Formulario ----------------------------- */
 
 function PublicForm({
@@ -540,6 +579,25 @@ function PublicForm({
     return [...schema.secciones].sort((a, b) => a.orden - b.orden);
   }, [schema]);
 
+  // Lista plana de todas las preguntas (para buscar por codigo)
+  const todasLasPreguntas = useMemo(
+    () => schema.secciones.flatMap((s) => s.preguntas),
+    [schema],
+  );
+
+  // IDs de preguntas especiales para auto-completar
+  const idFechaNacimiento = useMemo(() => {
+    const q = todasLasPreguntas.find(
+      (p) => p.codigo?.toUpperCase() === "FECHA_NACIMIENTO",
+    );
+    return q?.id ?? null;
+  }, [todasLasPreguntas]);
+
+  const idEdad = useMemo(() => {
+    const q = todasLasPreguntas.find((p) => p.codigo?.toUpperCase() === "EDAD");
+    return q?.id ?? null;
+  }, [todasLasPreguntas]);
+
   const current = sections[step];
 
   useEffect(() => {
@@ -554,10 +612,43 @@ function PublicForm({
   const questions = current?.preguntas.filter(visible) || [];
 
   function updateAnswer(id: number, answer: Answer) {
-    setAnswers((previous) => ({
-      ...previous,
-      [id]: { ...previous[id], ...answer },
-    }));
+    setAnswers((previous) => {
+      const siguiente: Record<number, Answer> = {
+        ...previous,
+        [id]: { ...previous[id], ...answer },
+      };
+
+      // 🔁 Auto-completar EDAD cuando cambia FECHA_NACIMIENTO
+      if (id === idFechaNacimiento && idEdad) {
+        const fecha = answer.valorTexto?.trim() ?? "";
+        if (!fecha) {
+          // Borraron la fecha → limpiamos edad
+          siguiente[idEdad] = {
+            ...siguiente[idEdad],
+            valorNumero: undefined,
+          };
+        } else {
+          const edad = calcularEdad(fecha);
+          if (edad !== null) {
+            siguiente[idEdad] = {
+              ...siguiente[idEdad],
+              valorNumero: edad,
+            };
+            // Limpiamos cualquier error previo en EDAD
+            setErrors((prevErr) => {
+              if (!prevErr[idEdad]) return prevErr;
+              const copia = { ...prevErr };
+              delete copia[idEdad];
+              return copia;
+            });
+          }
+        }
+      }
+
+      return siguiente;
+    });
+
+    // Limpiamos el error de la pregunta que se acaba de tocar
     setErrors((prev) => {
       if (!prev[id]) return prev;
       const copia = { ...prev };
@@ -691,7 +782,7 @@ function PublicForm({
         {/* Contenido */}
         <main
           ref={scrollRef}
-          className="absolute inset-0 overflow-y-auto overscroll-contain px-6 pb-28 pt-46"
+          className="absolute inset-0 overflow-y-auto overscroll-contain px-6 pb-28 pt-48"
         >
           <QuestionSection
             section={current}
@@ -821,6 +912,7 @@ function QuestionField({
   const isGroup =
     (kind === "unica" || kind === "multiple") && options.length > 0;
   const inputClass = `${inputBase} ${error ? inputErr : inputOk}`;
+  const esEdad = question.codigo?.toUpperCase() === "EDAD";
 
   const textHandlers = {
     onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -840,12 +932,12 @@ function QuestionField({
     >
       {/* Encabezado de la pregunta */}
       <div className="mb-3.5 flex items-start gap-2.5">
-        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-orange-200/80 bg-orange-50 text-xs font-black text-brand-500">
+        <span className="mt-[1px] flex h-[22px] min-w-[22px] shrink-0 items-center justify-center rounded-lg border border-orange-200/80 bg-orange-50 px-1 text-[11px] font-black text-brand-500">
           {numero}
         </span>
         <label
           htmlFor={isGroup ? undefined : inputId}
-          className="block text-[13.5px] font-extrabold uppercase leading-snug tracking-tight text-slate-900"
+          className="block text-[13.5px] font-extrabold uppercase leading-[22px] tracking-tight text-slate-900"
         >
           {question.enunciado}
           {question.obligatoria && (
@@ -897,8 +989,12 @@ function QuestionField({
             step={reglas.esEntero ? 1 : "any"}
             placeholder="Ingresa un número"
             aria-invalid={!!error}
-            className={inputClass}
+            readOnly={esEdad}
+            className={`${inputClass} ${
+              esEdad ? "cursor-not-allowed bg-slate-50 text-slate-500" : ""
+            }`}
             onChange={(event) => {
+              if (esEdad) return; // bloqueado si es EDAD autocalculada
               const raw = event.target.value;
               if (raw === "") {
                 update({ valorNumero: undefined });
@@ -912,6 +1008,10 @@ function QuestionField({
               update({ valorNumero: num });
             }}
             onKeyDown={(event) => {
+              if (esEdad) {
+                event.preventDefault();
+                return;
+              }
               if (reglas.esEntero && (event.key === "." || event.key === ",")) {
                 event.preventDefault();
               }
