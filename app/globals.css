@@ -342,8 +342,6 @@
   color: var(--w-orange);
 }
 
-
-
 .welcome-info {
   display: grid;
   gap: 0.6rem;
@@ -380,4 +378,9 @@
   color: #f45116;
   font-weight: 700;
   margin-right: 0.25rem;
+}
+
+.welcome-cta {
+  width: 100%;
+  justify-content: center;
 }

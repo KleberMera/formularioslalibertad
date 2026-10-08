@@ -430,7 +430,12 @@ function WelcomeScreen({
         <div className="welcome-kicker">BIENVENIDO/A</div>
 
         <h1>{schema.nombre}</h1>
-        <p className="whitespace-pre-line text-left">{schema.descripcion}</p>
+
+        <button className="welcome-cta" onClick={onStart}>
+          Registrarse <ArrowRight />
+        </button>
+
+        <p className="whitespace-pre-line text-left pt-6">{schema.descripcion}</p>
 
         {hasEventInfo && (
           <div className="welcome-info">
@@ -480,10 +485,6 @@ function WelcomeScreen({
             )}
           </div>
         )}
-
-        <button className="welcome-cta" onClick={onStart}>
-          Registrarse <ArrowRight />
-        </button>
       </main>
     </div>
   );
