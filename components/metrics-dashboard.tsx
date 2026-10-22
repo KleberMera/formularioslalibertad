@@ -197,7 +197,7 @@ export default function MetricsDashboard() {
                           className={`inactivity inactivity--${formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).level}`}
                         >
                           <span className="metrics-elapsed-full">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).full}</span>
-                          <span className="metrics-elapsed-mobile" title="Horas, minutos y segundos">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).clock}</span>
+                          {/* <span className="metrics-elapsed-mobile" title="Horas y minutos">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).clock}</span> */}
                         </td>
                       </tr>
                     ))}</tbody>

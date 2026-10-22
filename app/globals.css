@@ -366,6 +366,7 @@
   .metrics-table-scroll .metrics-count { font-size: .75rem; }
   .metrics-date-full, .metrics-elapsed-full { display: none; }
   .metrics-date-mobile, .metrics-elapsed-mobile { display: inline; }
+  .metrics-table-scroll .inactivity span { box-sizing: border-box; max-width: 100%; padding: 2px 4px; white-space: nowrap; }
   .metrics-table-scroll td:nth-child(2)::before, .metrics-table-scroll td:nth-child(4)::before, .metrics-table-scroll td:nth-child(5)::before { display: block; content: attr(data-label); color: #8290a3; font-size: .58rem; font-weight: 700; letter-spacing: .02em; }
   .metrics-table-scroll td:nth-child(2), .metrics-table-scroll td:nth-child(4), .metrics-table-scroll td:nth-child(5) { font-size: .72rem; }
 }
