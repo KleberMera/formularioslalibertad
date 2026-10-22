@@ -66,12 +66,14 @@ function formatInactivity(
   const totalSeconds = Math.max(0, elapsedAtFetch + elapsedSinceFetch);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
   const paddedHours = String(hours).padStart(2, "0");
   const paddedMinutes = String(minutes).padStart(2, "0");
+  const paddedSeconds = String(seconds).padStart(2, "0");
   const level = totalSeconds < 900 ? "ok" : totalSeconds < 1800 ? "warn" : "alert";
   return {
-    full: `${hours} h ${paddedMinutes} min`,
-    clock: `${paddedHours}:${paddedMinutes}`,
+    full: `${hours} h ${paddedMinutes} min ${paddedSeconds} s`,
+    clock: `${paddedHours}:${paddedMinutes}:${paddedSeconds}`,
     level,
   };
 }
@@ -88,7 +90,7 @@ export default function MetricsDashboard() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const interval = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
+    const interval = window.setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -195,7 +197,7 @@ export default function MetricsDashboard() {
                           className={`inactivity inactivity--${formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).level}`}
                         >
                           <span className="metrics-elapsed-full">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).full}</span>
-                          <span className="metrics-elapsed-mobile" title="Horas y minutos">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).clock}</span>
+                          <span className="metrics-elapsed-mobile" title="Horas, minutos y segundos">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).clock}</span>
                         </td>
                       </tr>
                     ))}</tbody>
