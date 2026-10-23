@@ -24,7 +24,7 @@ echo "📂 Publicando archivos..."
 
 # Si tu Next.js está configurado como export estático:
 # npm run export
-sudo rsync -av --delete out/ /var/www/dancing-jovenes/
+sudo rsync -av --delete out/ /var/www/formularios-brigadas/
 
 # Si lo sirves como aplicación Node (SSR):
 # sudo rsync -av --delete .next/ /var/www/FORMULARIOS/.next/

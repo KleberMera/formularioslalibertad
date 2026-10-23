@@ -6,9 +6,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // basePath: "/dancing-jovenes",
-  // assetPrefix: "/dancing-jovenes",
-  // output: "export",
+  basePath: "/formularios-brigadas",
+  assetPrefix: "/formularios-brigadas",
+  output: "export",
 }
 
 export default nextConfig
