@@ -879,3 +879,33 @@ tr:has(.inactivity--alert) { background: #fff7f7; }
     gap: 12px;
   }
 }
+
+.metrics-refresh { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+.metrics-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.3s, color 0.3s;
+}
+.metrics-delta-count { font-size: 1rem; }
+.metrics-delta--up { background: #dcfce7; color: #166534; }
+.metrics-delta--up .metrics-delta-count { animation: delta-pop 0.5s ease; }
+
+@keyframes delta-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.5); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 640px) {
+  .metrics-delta { padding: 4px 10px; }
+  .metrics-delta-text { display: none; } /* en móvil solo se ve "+3" */
+}

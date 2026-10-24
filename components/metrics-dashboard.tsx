@@ -78,6 +78,7 @@ export default function MetricsDashboard() {
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [baseline, setBaseline] = useState<{ total: number; at: number } | null>(null);
 
   const inFlight = useRef(false);
   const hasData = useRef(false);
@@ -123,8 +124,17 @@ export default function MetricsDashboard() {
       if (!response.ok || body.status >= 400) {
         throw new Error(body.message || "No se pudieron obtener las métricas.");
       }
-      setMetrics(body.data as Metrics);
+      // setMetrics(body.data as Metrics);
+      // setMetricsFetchedAt(Date.now());
+      // hasData.current = true;
+      // setError("");
+      const data = body.data as Metrics;
+      setMetrics(data);
       setMetricsFetchedAt(Date.now());
+      // La base se reinicia en la carga inicial y al presionar el botón, no en las automáticas
+      if (!silent || !hasData.current) {
+        setBaseline({ total: data.resumen.totalEncuestas, at: Date.now() });
+      }
       hasData.current = true;
       setError("");
     } catch (cause) {
@@ -147,6 +157,9 @@ export default function MetricsDashboard() {
   const promedio = activos > 0 ? Math.round((sumaRegistradores / activos) * 10) / 10 : 0;
   const maximo = conRegistros.reduce((acc, r) => Math.max(acc, r.cantidad), 0);
 
+  const nuevos = metrics && baseline ? Math.max(0, metrics.resumen.totalEncuestas - baseline.total) : 0;
+
+
   return (
     <main className="metrics-page">
       <header className="metrics-header">
@@ -163,10 +176,24 @@ export default function MetricsDashboard() {
             <span className="metrics-eyebrow">SEGUIMIENTO DE REGISTROS</span>
             <h1>Métricas del formulario</h1>
           </div>
-          <button className="metrics-submit" type="button" onClick={() => loadMetrics()} disabled={loading} aria-label="Actualizar">
+          <div className="metrics-refresh">
+            {baseline && (
+              <span className={`metrics-delta${nuevos > 0 ? " metrics-delta--up" : ""}`} aria-live="polite">
+                <b key={nuevos} className="metrics-delta-count">{nuevos > 0 ? `+${nuevos}` : "0"}</b>
+                <span className="metrics-delta-text">
+                  {nuevos === 1 ? "nueva" : "nuevas"} desde las {formatTime(new Date(baseline.at).toISOString())}
+                </span>
+              </span>
+            )}
+            <button className="metrics-submit" type="button" onClick={() => loadMetrics()} disabled={loading} aria-label="Actualizar">
+              {loading ? <Loader2 className="spin" /> : <RefreshCw />}
+              <span className="metrics-submit-text">{loading ? "Consultando" : "Actualizar"}</span>
+            </button>
+          </div>
+          {/* <button className="metrics-submit" type="button" onClick={() => loadMetrics()} disabled={loading} aria-label="Actualizar">
             {loading ? <Loader2 className="spin" /> : <RefreshCw />}
             <span className="metrics-submit-text">{loading ? "Consultando" : "Actualizar"}</span>
-          </button>
+          </button> */}
         </div>
 
         {error && <div className="metrics-error" role="alert">{error}</div>}
@@ -180,7 +207,7 @@ export default function MetricsDashboard() {
                 <MetricCard tone="orange" icon={<Activity />} label="Encuestas públicas" value={metrics.resumen.encuestasPublicas} detail="Registros sin registrador" />
               )}
               <MetricCard tone="green" icon={<UsersRound />} label="Registradores Activos" value={activos} detail={`${totalRegistradores} habilitados en total`} />
-              <MetricCard tone="red" icon={<UserX />} label="Registradores Ausentes" value={sinRegistros} detail="¡¡¡Compañeros estamos esperándoles!!!" />
+              <MetricCard tone="red" icon={<UserX />} label="Registradores Ausentes" value={sinRegistros} detail="¡¡¡Compañeros estamos esperándolos!!!" />
               <MetricCard tone="purple" icon={<CalendarDays />} label="Promedio por registrador" value={promedio} detail={`Solo con registros · Máximo: ${maximo}`} />
             </div>
 
