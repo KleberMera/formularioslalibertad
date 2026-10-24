@@ -175,7 +175,7 @@ export default function MetricsDashboard() {
         {metrics && (
           <>
             <div className="metrics-summary" aria-label="Resumen de métricas">
-              <MetricCard tone="blue" icon={<BarChart3 />} label="Encuestas" value={metrics.resumen.totalEncuestas} detail="Del evento activo" />
+              <MetricCard tone="blue" icon={<BarChart3 />} label="Encuestas Realizadas" value={metrics.resumen.totalEncuestas} detail="Del evento activo" />
               {metrics.resumen.encuestasPublicas > 0 && (
                 <MetricCard tone="orange" icon={<Activity />} label="Encuestas públicas" value={metrics.resumen.encuestasPublicas} detail="Registros sin registrador" />
               )}
