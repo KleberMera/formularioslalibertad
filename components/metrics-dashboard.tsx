@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Activity, BarChart3, CalendarDays, Loader2, RefreshCw, UsersRound } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const FORMULARIO_ID = Number(process.env.NEXT_PUBLIC_FIRMES_FORMULARIO_ID);
 const EVENTO_ID = Number(process.env.NEXT_PUBLIC_FIRMES_EVENTO_ID);
+const REFRESH_MS = 5000;
 
 type RegistrarMetric = {
   registradorId: number;
@@ -89,35 +90,63 @@ export default function MetricsDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const inFlight = useRef(false);
+  const lastRange = useRef({ desde: monthStart, hasta: today });
+
+  const hasMetrics = metrics !== null;
+
+  // Reloj de 1 s para el contador de inactividad
   useEffect(() => {
     const interval = window.setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
-  async function loadMetrics(event?: FormEvent) {
+  // Carga inicial al abrir la página
+  useEffect(() => {
+    loadMetrics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Actualización automática cada 5 s (silenciosa), una vez que hay datos
+  useEffect(() => {
+    if (!hasMetrics) return;
+    const interval = window.setInterval(() => loadMetrics(undefined, true), REFRESH_MS);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMetrics]);
+
+  async function loadMetrics(event?: FormEvent, silent = false) {
     event?.preventDefault();
-    setError("");
-    setMetrics(null);
-    if (!Number.isInteger(FORMULARIO_ID) || FORMULARIO_ID < 1 || !Number.isInteger(EVENTO_ID) || EVENTO_ID < 1) {
-      setError("Configura NEXT_PUBLIC_FIRMES_FORMULARIO_ID y NEXT_PUBLIC_FIRMES_EVENTO_ID en .env.local.");
-      return;
-    }
-    if (!desde || !hasta || desde > hasta) {
-      setError("Selecciona un rango de fechas válido.");
-      return;
-    }
-    if (!API_URL) {
-      setError("Falta configurar NEXT_PUBLIC_API_URL.");
-      return;
+    if (silent && inFlight.current) return;
+
+    const range = silent ? lastRange.current : { desde, hasta };
+
+    if (!silent) {
+      setError("");
+      setMetrics(null);
+      if (!Number.isInteger(FORMULARIO_ID) || FORMULARIO_ID < 1 || !Number.isInteger(EVENTO_ID) || EVENTO_ID < 1) {
+        setError("Configura NEXT_PUBLIC_FIRMES_FORMULARIO_ID y NEXT_PUBLIC_FIRMES_EVENTO_ID en .env.local.");
+        return;
+      }
+      if (!range.desde || !range.hasta || range.desde > range.hasta) {
+        setError("Selecciona un rango de fechas válido.");
+        return;
+      }
+      if (!API_URL) {
+        setError("Falta configurar NEXT_PUBLIC_API_URL.");
+        return;
+      }
+      lastRange.current = range;
+      setLoading(true);
     }
 
-    setLoading(true);
+    inFlight.current = true;
     try {
       const params = new URLSearchParams({
         formularioId: String(FORMULARIO_ID),
         eventoId: String(EVENTO_ID),
-        desde,
-        hasta,
+        desde: range.desde,
+        hasta: range.hasta,
       });
       const response = await fetch(`${API_URL}/metricas?${params.toString()}`);
       const body = await response.json();
@@ -126,10 +155,15 @@ export default function MetricsDashboard() {
       }
       setMetrics(body.data as Metrics);
       setMetricsFetchedAt(Date.now());
+      if (silent) setError("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Error de conexión con el servidor.");
+      // En la consulta automática se conservan los datos que ya hay en pantalla.
+      if (!silent) {
+        setError(cause instanceof Error ? cause.message : "Error de conexión con el servidor.");
+      }
     } finally {
-      setLoading(false);
+      inFlight.current = false;
+      if (!silent) setLoading(false);
     }
   }
 
@@ -148,12 +182,9 @@ export default function MetricsDashboard() {
           <div>
             <span className="metrics-eyebrow">SEGUIMIENTO DE REGISTROS</span>
             <h1>Métricas del formulario</h1>
-            {/* <p>Consulta los registros por formulario, evento y rango de fechas.</p> */}
           </div>
-          {/* <span className="metrics-title-icon"><Activity /></span> */}
         </div>
 
-        {/* <div className="metrics-scope">Consultando el formulario <strong>#{FORMULARIO_ID}</strong> y el evento <strong>#{EVENTO_ID}</strong> configurados en el entorno.</div> */}
         <form className="metrics-filters" onSubmit={loadMetrics}>
           <label>Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} required /></label>
           <label>Hasta<input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} required /></label>
@@ -186,21 +217,20 @@ export default function MetricsDashboard() {
                 <div className="metrics-table-scroll">
                   <table>
                     <thead><tr><th>Registrador</th><th>Registros</th><th>Participación</th><th>Último registro</th><th>Inactividad</th></tr></thead>
-                    <tbody>{metrics.porRegistrador.map((registrar) => (
-                      <tr key={registrar.registradorId}>
-                        <td data-label="Registrador"><strong>{registrar.nombre}</strong><small>ID {registrar.registradorId}</small></td>
-                        <td className="metrics-count" data-label="Registros">{registrar.cantidad}</td>
-                        <td data-label="Participación"><div className="metrics-share"><span><i style={{ width: `${Math.min(100, Math.max(0, registrar.porcentaje))}%` }} /></span><b>{registrar.porcentaje}%</b></div></td>
-                        <td data-label="Último registro"><span className="metrics-date-full">{formatDate(registrar.ultimoRegistro)}</span><span className="metrics-date-mobile">{formatTime(registrar.ultimoRegistro)}</span></td>
-                        <td
-                          data-label="Inactividad"
-                          className={`inactivity inactivity--${formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).level}`}
-                        >
-                          <span className="metrics-elapsed-full">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).full}</span>
-                          {/* <span className="metrics-elapsed-mobile" title="Horas y minutos">{formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt).clock}</span> */}
-                        </td>
-                      </tr>
-                    ))}</tbody>
+                    <tbody>{metrics.porRegistrador.map((registrar) => {
+                      const inactivity = formatInactivity(registrar.ultimoRegistro, metrics.generadoEn, currentTime, metricsFetchedAt);
+                      return (
+                        <tr key={registrar.registradorId}>
+                          <td data-label="Registrador"><strong>{registrar.nombre}</strong><small>ID {registrar.registradorId}</small></td>
+                          <td className="metrics-count" data-label="Registros">{registrar.cantidad}</td>
+                          <td data-label="Participación"><div className="metrics-share"><span><i style={{ width: `${Math.min(100, Math.max(0, registrar.porcentaje))}%` }} /></span><b>{registrar.porcentaje}%</b></div></td>
+                          <td data-label="Último registro"><span className="metrics-date-full">{formatDate(registrar.ultimoRegistro)}</span><span className="metrics-date-mobile">{formatTime(registrar.ultimoRegistro)}</span></td>
+                          <td data-label="Inactividad" className={`inactivity inactivity--${inactivity.level}`}>
+                            <span className="metrics-elapsed-full">{inactivity.full}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}</tbody>
                   </table>
                 </div>
               ) : <div className="metrics-empty">No hay registros por registrador en este periodo.</div>}

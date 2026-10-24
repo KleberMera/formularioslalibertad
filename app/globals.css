@@ -846,3 +846,6 @@
 
 /* Fila destacada si lleva mucho sin registrar */
 tr:has(.inactivity--alert) { background: #fff7f7; }
+
+.metrics-auto { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.metrics-auto input { width: 18px; height: 18px; accent-color: #16a34a; }
