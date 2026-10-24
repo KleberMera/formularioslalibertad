@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Activity, BarChart3, CalendarDays, Loader2, RefreshCw, UsersRound } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Activity, BarChart3, CalendarDays, Loader2, RefreshCw, UserX, UsersRound } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const FORMULARIO_ID = Number(process.env.NEXT_PUBLIC_FIRMES_FORMULARIO_ID);
@@ -18,7 +18,7 @@ type RegistrarMetric = {
 };
 type Metrics = {
   generadoEn: string;
-  filtros: { formularioId: number; eventoId: number; desde: string; hasta: string };
+  filtros: { formularioId: number; eventoId: number };
   resumen: {
     totalEncuestas: number;
     encuestasPublicas: number;
@@ -29,13 +29,6 @@ type Metrics = {
   };
   porRegistrador: RegistrarMetric[];
 };
-
-function localDate(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function formatDate(value: string | null) {
   if (!value) return "Sin registros";
@@ -80,10 +73,6 @@ function formatInactivity(
 }
 
 export default function MetricsDashboard() {
-  const today = localDate(new Date());
-  const monthStart = `${today.slice(0, 7)}-01`;
-  const [desde, setDesde] = useState(monthStart);
-  const [hasta, setHasta] = useState(today);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [metricsFetchedAt, setMetricsFetchedAt] = useState(0);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -91,9 +80,7 @@ export default function MetricsDashboard() {
   const [error, setError] = useState("");
 
   const inFlight = useRef(false);
-  const lastRange = useRef({ desde: monthStart, hasta: today });
-
-  const hasMetrics = metrics !== null;
+  const hasData = useRef(false);
 
   // Reloj de 1 s para el contador de inactividad
   useEffect(() => {
@@ -101,52 +88,35 @@ export default function MetricsDashboard() {
     return () => window.clearInterval(interval);
   }, []);
 
-  // Carga inicial al abrir la página
+  // Carga inicial + actualización automática cada 5 s
   useEffect(() => {
     loadMetrics();
+    const interval = window.setInterval(() => loadMetrics(true), REFRESH_MS);
+    return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Actualización automática cada 5 s (silenciosa), una vez que hay datos
-  useEffect(() => {
-    if (!hasMetrics) return;
-    const interval = window.setInterval(() => loadMetrics(undefined, true), REFRESH_MS);
-    return () => window.clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMetrics]);
+  async function loadMetrics(silent = false) {
+    if (inFlight.current) return;
 
-  async function loadMetrics(event?: FormEvent, silent = false) {
-    event?.preventDefault();
-    if (silent && inFlight.current) return;
-
-    const range = silent ? lastRange.current : { desde, hasta };
-
-    if (!silent) {
-      setError("");
-      setMetrics(null);
-      if (!Number.isInteger(FORMULARIO_ID) || FORMULARIO_ID < 1 || !Number.isInteger(EVENTO_ID) || EVENTO_ID < 1) {
-        setError("Configura NEXT_PUBLIC_FIRMES_FORMULARIO_ID y NEXT_PUBLIC_FIRMES_EVENTO_ID en .env.local.");
-        return;
-      }
-      if (!range.desde || !range.hasta || range.desde > range.hasta) {
-        setError("Selecciona un rango de fechas válido.");
-        return;
-      }
-      if (!API_URL) {
-        setError("Falta configurar NEXT_PUBLIC_API_URL.");
-        return;
-      }
-      lastRange.current = range;
-      setLoading(true);
+    if (!Number.isInteger(FORMULARIO_ID) || FORMULARIO_ID < 1 || !Number.isInteger(EVENTO_ID) || EVENTO_ID < 1) {
+      setError("Configura NEXT_PUBLIC_FIRMES_FORMULARIO_ID y NEXT_PUBLIC_FIRMES_EVENTO_ID en .env.local.");
+      return;
+    }
+    if (!API_URL) {
+      setError("Falta configurar NEXT_PUBLIC_API_URL.");
+      return;
     }
 
     inFlight.current = true;
+    if (!silent) {
+      setError("");
+      setLoading(true);
+    }
     try {
       const params = new URLSearchParams({
         formularioId: String(FORMULARIO_ID),
         eventoId: String(EVENTO_ID),
-        desde: range.desde,
-        hasta: range.hasta,
       });
       const response = await fetch(`${API_URL}/metricas?${params.toString()}`);
       const body = await response.json();
@@ -155,10 +125,11 @@ export default function MetricsDashboard() {
       }
       setMetrics(body.data as Metrics);
       setMetricsFetchedAt(Date.now());
-      if (silent) setError("");
+      hasData.current = true;
+      setError("");
     } catch (cause) {
-      // En la consulta automática se conservan los datos que ya hay en pantalla.
-      if (!silent) {
+      // Si ya hay datos en pantalla, el fallo de una actualización automática se ignora.
+      if (!silent || !hasData.current) {
         setError(cause instanceof Error ? cause.message : "Error de conexión con el servidor.");
       }
     } finally {
@@ -166,6 +137,15 @@ export default function MetricsDashboard() {
       if (!silent) setLoading(false);
     }
   }
+
+  // Cálculos propios: solo cuentan los registradores con registros
+  const conRegistros = metrics ? metrics.porRegistrador.filter((r) => r.cantidad > 0) : [];
+  const totalRegistradores = metrics?.resumen.registradores ?? 0;
+  const activos = conRegistros.length;
+  const sinRegistros = Math.max(0, totalRegistradores - activos);
+  const sumaRegistradores = conRegistros.reduce((acc, r) => acc + r.cantidad, 0);
+  const promedio = activos > 0 ? Math.round((sumaRegistradores / activos) * 10) / 10 : 0;
+  const maximo = conRegistros.reduce((acc, r) => Math.max(acc, r.cantidad), 0);
 
   return (
     <main className="metrics-page">
@@ -183,34 +163,30 @@ export default function MetricsDashboard() {
             <span className="metrics-eyebrow">SEGUIMIENTO DE REGISTROS</span>
             <h1>Métricas del formulario</h1>
           </div>
+          <button className="metrics-submit" type="button" onClick={() => loadMetrics()} disabled={loading} aria-label="Actualizar">
+            {loading ? <Loader2 className="spin" /> : <RefreshCw />}
+            <span className="metrics-submit-text">{loading ? "Consultando" : "Actualizar"}</span>
+          </button>
         </div>
 
-        <form className="metrics-filters" onSubmit={loadMetrics}>
-          <label>Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} required /></label>
-          <label>Hasta<input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} required /></label>
-          <button className="metrics-submit" type="submit" disabled={loading}>
-            {loading ? <Loader2 className="spin" /> : <RefreshCw />}
-            {loading ? "Consultando" : "Consultar"}
-          </button>
-        </form>
-
         {error && <div className="metrics-error" role="alert">{error}</div>}
-        {loading && <div className="metrics-loading"><Loader2 className="spin" /> Consultando métricas…</div>}
+        {loading && !metrics && <div className="metrics-loading"><Loader2 className="spin" /> Consultando métricas…</div>}
 
         {metrics && (
           <>
             <div className="metrics-summary" aria-label="Resumen de métricas">
-              <MetricCard tone="blue" icon={<BarChart3 />} label="Encuestas" value={metrics.resumen.totalEncuestas} detail="En el periodo seleccionado" />
+              <MetricCard tone="blue" icon={<BarChart3 />} label="Encuestas" value={metrics.resumen.totalEncuestas} detail="Del evento activo" />
               {metrics.resumen.encuestasPublicas > 0 && (
                 <MetricCard tone="orange" icon={<Activity />} label="Encuestas públicas" value={metrics.resumen.encuestasPublicas} detail="Registros sin registrador" />
               )}
-              <MetricCard tone="green" icon={<UsersRound />} label="Registradores activos" value={metrics.resumen.registradoresConRegistros} detail={`${metrics.resumen.registradores} en total`} />
-              <MetricCard tone="purple" icon={<CalendarDays />} label="Promedio por registrador" value={metrics.resumen.promedioPorRegistrador} detail={`Máximo: ${metrics.resumen.maximoPorRegistrador}`} />
+              <MetricCard tone="green" icon={<UsersRound />} label="Registradores Activos" value={activos} detail={`${totalRegistradores} habilitados en total`} />
+              <MetricCard tone="red" icon={<UserX />} label="Registradores Ausentes" value={sinRegistros} detail="¡¡¡Compañeros estamos esperándoles!!!" />
+              <MetricCard tone="purple" icon={<CalendarDays />} label="Promedio por registrador" value={promedio} detail={`Solo con registros · Máximo: ${maximo}`} />
             </div>
 
             <section className="metrics-table-card">
               <div className="metrics-table-heading">
-                <div><h2>Registros por registrador</h2><p>{metrics.filtros.desde} al {metrics.filtros.hasta}</p></div>
+                <div><h2>Registros por registrador</h2><p>Evento activo</p></div>
                 <span>{metrics.resumen.totalEncuestas} registros</span>
               </div>
               {metrics.porRegistrador.length ? (
@@ -233,19 +209,15 @@ export default function MetricsDashboard() {
                     })}</tbody>
                   </table>
                 </div>
-              ) : <div className="metrics-empty">No hay registros por registrador en este periodo.</div>}
+              ) : <div className="metrics-empty">No hay registros por registrador en este evento.</div>}
             </section>
           </>
-        )}
-
-        {!metrics && !loading && !error && (
-          <div className="metrics-empty-state"><span><BarChart3 /></span><h2>Consulta tus métricas</h2><p>Los resultados aparecerán aquí. Esta página es pública y no requiere iniciar sesión.</p></div>
         )}
       </section>
     </main>
   );
 }
 
-function MetricCard({ icon, label, value, detail, tone }: { icon: ReactNode; label: string; value: number; detail: string; tone: "blue" | "orange" | "green" | "purple" }) {
+function MetricCard({ icon, label, value, detail, tone }: { icon: ReactNode; label: string; value: number; detail: string; tone: "blue" | "orange" | "green" | "purple" | "red" }) {
   return <article className={`metric-card metric-card--${tone}`}><span className="metric-card-icon">{icon}</span><div><p>{label}</p><strong>{value}</strong><small>{detail}</small></div></article>;
 }

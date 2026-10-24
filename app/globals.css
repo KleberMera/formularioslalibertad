@@ -849,3 +849,33 @@ tr:has(.inactivity--alert) { background: #fff7f7; }
 
 .metrics-auto { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .metrics-auto input { width: 18px; height: 18px; accent-color: #16a34a; }
+
+.metric-card--red { --tone: #dc2626; --tone-bg: #fee2e2; }
+
+@media (max-width: 640px) {
+  /* Botón solo con icono */
+  .metrics-title-row .metrics-submit {
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .metrics-title-row .metrics-submit-text { display: none; }
+
+  /* Título más pequeño */
+  .metrics-title-row h1 {
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+  .metrics-eyebrow { font-size: 0.65rem; }
+
+  /* Título y botón en la misma fila */
+  .metrics-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}
